@@ -139,7 +139,18 @@ Endpoint examples (used verbatim):
   `POST https://ai-gateway.vercel.sh/v1/evaluate` with `model: typesafe-ai/jev` and the gateway
   token from `omp token vercel-ai-gateway` answered HTTP 200, `{"answers":{"fixed":{"type":"boolean","probability":0.85}}}`.
   That is also the endpoint this server is pointed at for the end-to-end check.
-- 2026-09-30: the macOS releases are signed and notarized. The certificate is the team's own
+- 2026-09-30: the first signed run got as far as Apple would let it. `v0.1.2`'s macOS job signed
+  the app, its main binary and the zipped bundle with the team's Developer ID and then **failed
+  notarization with `HTTP status code: 401. Invalid credentials`** — Apple rejects the
+  `APPLE_ID` + `APPLE_PASSWORD` pair that was configured, so nothing is wrong with the certificate
+  or the workflow. The run published nothing, and its `v0.1.2` tag exists without a release; the
+  next dispatch bumps to `0.1.3` (a rerun of the same run would fail at `git tag`, which already
+  exists). Once the credentials are valid the tag can be deleted, and the check that settles which
+  half is wrong is `xcrun notarytool history --apple-id <id> --password <app-specific password>
+  --team-id Q4KD7AC52U` — 401 there means the pair is wrong, an empty history means it is right.
+  The App Store Connect key trio (`APPLE_API_KEY`, `APPLE_API_ISSUER`, `APPLE_API_KEY_P8`) is the
+  other path the workflow already accepts.
+- 2026-09-30: the macOS release path signs and notarizes. The certificate is the team's own
   Developer ID Application — `Aleksandr Vopilovskii pr RootFox`, team `Q4KD7AC52U`, valid to
   2031-09-17 — made for Tail MCP and kept in `~/tail-mcp-signing/`, whose `export/` copy carries
   the `.p12`, its password, the checksums and the recipe. It signs any app of the team, so both
@@ -149,8 +160,8 @@ Endpoint examples (used verbatim):
   run on purpose (signed-but-unnotarized still trips Gatekeeper), and the bundle is verified
   afterwards — `codesign --verify --deep --strict`, the sidecar's `allow-jit` entitlement, both
   binaries sharing a team, `stapler validate` on the app and on the dmg. Without the secrets the
-  build stays ad-hoc and says so. Releases up to `v0.1.1` are ad-hoc; `v0.1.2` is the first
-  signed one.
+  build stays ad-hoc and says so. Releases up to `v0.1.1` are ad-hoc; the first notarized one is
+  still to be published — the certificate half is proven in CI, the credentials half is not.
 - 2026-09-30: the community key is out of every config on this machine. It was never in a file:
   a value search across the home found it only in the run records of my own throwaway daemons
   (removed) and in session transcripts (inert). It survives as an exported `JEV_API_KEY` in the
