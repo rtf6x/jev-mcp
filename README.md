@@ -120,20 +120,25 @@ from its alpha alone and repainted by the system for a light, dark or highlighte
 
 ### Install a release
 
-Releases carry an **unsigned, unnotarized** build. macOS quarantines a download and then refuses
-it with «"Jev MCP.app" is damaged and cannot be opened» — the signature is ad-hoc
-(`codesign -dv` reports `Signature=adhoc`, `TeamIdentifier=not set`), which is what Gatekeeper
-means by "damaged". Clear the flag once, per machine:
+Downloads are signed with the team's **Developer ID Application** certificate and notarized by
+Apple, so the `.dmg` opens with a plain double-click. The release workflow takes the certificate
+and the notarization credentials from the repository secrets — `APPLE_CERTIFICATE`,
+`APPLE_CERTIFICATE_PASSWORD`, `APPLE_TEAM_ID`, `APPLE_ID`, `APPLE_PASSWORD` (an app-specific
+password; or `APPLE_API_KEY`, `APPLE_API_ISSUER`, `APPLE_API_KEY_P8` instead of the last three).
+The certificate itself is the team's, reused from Tail MCP; the material and the recipe live in
+`~/tail-mcp-signing/`.
+
+With **no certificate** the build falls back to an ad-hoc signature, and macOS quarantines the
+download and answers «"Jev MCP.app" is damaged and cannot be opened». Clear the flag once per
+machine:
 
 ```bash
 xattr -dr com.apple.quarantine "/Applications/Jev MCP.app"
 ```
 
-The app opens normally from then on. A double-click that works on a fresh machine needs a
-**Developer ID Application** certificate and notarization: `release.yml` then takes
-`APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`,
-`APPLE_PASSWORD` (an app-specific password) and `APPLE_TEAM_ID` from the repository secrets.
-None of them is set or wired yet — until they are, the `xattr` line is the install step.
+A certificate present **without** notarization credentials stops the release on purpose: a
+signed-but-unnotarized build still trips Gatekeeper, so shipping it would only move the problem.
+Releases up to `v0.1.1` are ad-hoc and need the line above; `v0.1.2` and later are notarized.
 
 ## The tools
 
