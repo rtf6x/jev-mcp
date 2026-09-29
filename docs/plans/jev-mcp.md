@@ -263,6 +263,15 @@ Endpoint examples (used verbatim):
   quarantine event on a machine whose Gatekeeper assessments are disabled raises the consent
   dialog, which `syspolicyd` converts into `Terminating process due to Gatekeeper rejection` when
   nobody answers it. The second one is the only thing left to confirm under the default setting.
+- 2026-09-30: `v0.1.4` is published — the draft flag was lifted on the owner's word, and the
+  published image was re-verified after the fact: its `sha256` matches the digest GitHub reports
+  for the asset, `spctl` still answers `accepted, source=Notarized Developer ID` and the stapled
+  ticket validates. The repository is **private**, so the release is reachable by anyone with
+  access to it and by nobody else; a user-facing download needs a public repository, a token, or a
+  mirror — the owner's call, not a defect. The machine's `/Applications/Jev MCP.app` was replaced
+  with this build (quarantine cleared, launched from `/Applications`, `/health` answers `0.1.4` and
+  `tools/list` serves the twelve tools), so the tray and the harnesses now run from the notarized
+  build instead of the ad-hoc `0.1.1`.
 
 ## Loose ends
 
@@ -294,3 +303,11 @@ Endpoint examples (used verbatim):
 - Windows and Linux desktop builds are configured but unverified on this machine.
 - Editing `generate_image.enabled` needed an approval that expired, so the harness's own
   image tool stays off; the icon is drawn through the AI Gateway's images endpoint instead.
+- The release lives in a **private** repository, and its assets follow that rule: a download link
+  that works for someone outside the repository (a public repository, a token, or a mirror) is a
+  decision the owner has not taken. Until then "published" means "available to whoever has
+  repository access".
+- The one macOS behaviour left to confirm under a default setting: a first launch that carries a
+  real quarantine event on a machine with Gatekeeper assessments *enabled* — this machine has them
+  disabled, so the consent dialog observed there is not proof of what an ordinary machine shows.
+  The owner's own download is the cheapest way to settle it.
