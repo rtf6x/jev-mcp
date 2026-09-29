@@ -46,6 +46,12 @@ compile time, so a new `.env` always matches the shipped comments.
   could double-charge.
 - Secrets (`JEV_API_KEY`) never appear in logs, tool output, tests, or the repository.
 
+## The skill
+
+`skills/jev/` is a copy of `ai-skillset/skills/jev`. The skillset keeps the source of truth; this
+copy exists so a machine that clones only this repository still learns when to call the tools. It is
+not maintained here — when the skill changes in the skillset, copy the folder again.
+
 ## Plan
 
 The living plan is `docs/plans/jev-mcp.md`: goal, invariants, task list, ledger, loose ends.

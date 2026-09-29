@@ -281,6 +281,15 @@ Endpoint examples (used verbatim):
   `JEV_API_KEY=jev_…`, the *official* Jev key, a different provider — and the server's environment
   variable wins over `.env`, which is the trap `skills/jev/reference/harnesses.md` documents.
   `env -u JEV_API_KEY open "/Applications/Jev MCP.app"` starts it clean.
+- 2026-09-30: the skill ships here too. The owner's call: the skillset (`ai-skillset/skills/jev`)
+  stays the source of truth, and this repository carries a plain **copy** at `skills/jev/` — copied
+  by hand, no sync script and no drift check, byte for byte identical (`diff -r` silent, both
+  `SKILL.md` files `md5` to `1fcb2d58…`). The skill itself gained the four moments where a guardrail
+  call is not optional and an explicit precedence line — the local server first, `judge` /
+  `judge_batch` only where it cannot run — and `rules/rules.md` carries the same order in `Evidence
+  before conclusions`. `README.md` now opens with a from-scratch install (desktop app / source /
+  stdio host, then provider, harness, skill, checks) and a troubleshooting list: the `401`
+  environment trap, a sidecar that is not running, quarantine.
 
 ## Loose ends
 
@@ -288,8 +297,10 @@ Endpoint examples (used verbatim):
   `jkudish/jev-mcp` (MIT) with our URL-only transport. Anything the port could not carry over
   faithfully, and every deviation our transport forced, is recorded in the port's report and in
   `THIRD-PARTY-NOTICES.md`.
-- Skills: the community ships one with the package; the owner's own copy lives in the skillset
-  repository (`skills/jev/`) and reaches every harness through `~/.agents/skills`.
+- Skills: the community ships one with the package; the source of truth is the skillset
+  (`ai-skillset/skills/jev`), and this repository carries a copy at `skills/jev/` so a machine that
+  clones only this one still learns when to call the tools. The copy is made by hand — when the
+  skill changes in the skillset, copy the folder again.
 - The icon set in `desktop-app/src-tauri/icons` and its source in `desktop-app/icons-src/` are
   generated, not hand-drawn: `npm run icons` redraws both. The desktop jobs in `build.yml` and
   `release.yml` now find the source image and build.

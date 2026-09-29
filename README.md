@@ -17,16 +17,80 @@ question design lives in the tools, not in your prompt: it does not translate an
 vocabulary beyond spelling the yes/no question the way your endpoint expects, and it never
 substitutes a value for a malformed answer.
 
-## Install
+## Install from scratch
+
+A machine with nothing installed. Five steps; the details live in the sections below, so nothing is
+written twice.
+
+### 1. Get the server running
+
+**Desktop app — no Node needed.** Take the installer from
+[Releases](https://github.com/rtf6x/jev-mcp/releases) and drag it to Applications. The tray then owns
+the server: Start/Stop, **Edit .env**, Open logs. Signature, notarization and the first-launch
+confirmation are covered under [Desktop app](#desktop-app).
+
+**From source — Node 22.18 or newer.** The server runs the TypeScript sources directly.
 
 ```bash
 git clone git@github.com:rtf6x/jev-mcp.git
 cd jev-mcp
 npm install
 cp .env.example .env      # then set JEV_URL and JEV_API_KEY
+npm start                 # MCP over HTTP on http://127.0.0.1:18791/mcp
 ```
 
-Requires Node 22.18 or newer. The server runs the TypeScript sources directly.
+**A host that spawns a process** — Claude Desktop and other stdio-only hosts: run `npm run stdio`,
+wired as in [Harnesses](#harnesses).
+
+### 2. Point it at a provider
+
+`JEV_URL`, `JEV_API_KEY`, and the model and yes/no spelling that endpoint expects: the table and the
+key pages are in [Configure](#configure). The tray app keeps its own `.env` in its config directory;
+a server started by hand reads the repository's.
+
+### 3. Wire your harness
+
+One command for Claude Code, a JSON block for omp, opencode and any other Streamable-HTTP client:
+[Harnesses](#harnesses).
+
+### 4. Install the skill
+
+The server registers twelve tools; the skill is what makes an agent call them instead of answering
+from its own reading. `skills/jev/` ships here as a copy — copy it into the directory your client
+reads:
+
+```bash
+cp -R skills/jev ~/.claude/skills/            # Claude Code (or .claude/skills in one project)
+cp -R skills/jev ~/.config/opencode/skills/   # opencode
+cp -R skills/jev ~/.agents/skills/            # omp, Codex, generic agents
+```
+
+Claude Desktop loads plugins rather than skill directories, so the skill does not reach it this way;
+there the server is what matters.
+
+### 5. Check that it works
+
+```bash
+curl -sS http://127.0.0.1:18791/health        # the endpoint and the model actually in force
+claude mcp list                               # jev ... Connected
+```
+
+Then call one tool — in a harness, or over HTTP with an `initialize` first. A first call that comes
+back with a verdict, probabilities and a usage block is the whole chain working.
+
+### When it does not work
+
+- **`401 Authentication failed`** — a real environment variable beats `.env`, so a key exported in
+  the shell the app was launched from wins over the app's own file. `/health` names the endpoint and
+  the model in force, and the key's prefix says which provider it belongs to (`vck_` Vercel AI
+  Gateway, `jev_` TypeSafe, `sk-or-v1_` OpenRouter). Launch the tray app from a clean environment:
+  `env -u JEV_API_KEY open "/Applications/Jev MCP.app"`.
+- **Nothing listens on the port** — the sidecar is not running. Start it in the tray (or `npm start`
+  in the checkout) and read Open logs.
+- **`"Jev MCP.app" is damaged and cannot be opened`** — an ad-hoc build rather than a broken
+  download: `xattr -dr com.apple.quarantine "/Applications/Jev MCP.app"`.
+- **Launch at startup records a temporary path** — a quarantined app runs from a randomized
+  `AppTranslocation` copy. Launch it once from `/Applications` first.
 
 ## Configure
 
@@ -93,8 +157,8 @@ Claude Desktop and other stdio-only hosts:
 A config that already carries a `jev` entry gets that entry **replaced**, never a second one: a
 JSON object keeps the last duplicate key, so the stale entry wins and the client keeps talking to
 the old endpoint while the file still looks right. The server answers `tools/list` only — no
-prompts and no resources; the skill that tells an agent which tool to call lives in the skillset
-(`skills/jev`), not in this repository.
+prompts and no resources; the skill that tells an agent which tool to call ships here as
+`skills/jev/`, a copy of `ai-skillset/skills/jev`, which stays the source of truth.
 
 ## Desktop app
 
