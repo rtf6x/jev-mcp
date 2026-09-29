@@ -1,6 +1,6 @@
 [package]
 name = "jev-mcp-desktop"
-version = "0.1.0"
+version = "0.1.1"
 description = "Jev MCP tray app — runs the Jev MCP server as a background process with a menu-bar/tray icon"
 authors = ["rtf6x"]
 edition = "2021"

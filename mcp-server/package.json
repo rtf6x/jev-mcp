@@ -1,6 +1,6 @@
 {
   "name": "jev-mcp-server",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "description": "Jev MCP server: the twelve Jev judgment tools over a configured Jev endpoint",
