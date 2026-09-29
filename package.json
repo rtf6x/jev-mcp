@@ -1,0 +1,20 @@
+{
+  "name": "jev-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MCP server that forwards Jev judgments to the configured Jev endpoint",
+  "license": "MIT",
+  "workspaces": [
+    "mcp-server"
+  ],
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "start": "npm start --workspace mcp-server",
+    "typecheck": "npm run typecheck --workspace mcp-server",
+    "test": "npm test --workspace mcp-server",
+    "build": "npm run build --workspace mcp-server",
+    "sidecar": "npm run sidecar --workspace mcp-server"
+  }
+}

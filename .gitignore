@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+.env.local
+*.log
+.DS_Store
+._*
+Thumbs.db
+desktop-app/src-tauri/target/
+desktop-app/src-tauri/gen/
+desktop-app/src-tauri/binaries/

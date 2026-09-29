@@ -1,0 +1,31 @@
+{
+  "name": "jev-mcp-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Jev MCP server: judge tool over a configured Jev endpoint",
+  "license": "MIT",
+  "bin": {
+    "jev-mcp": "dist/index.js"
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "start": "node src/index.ts --http",
+    "stdio": "node src/index.ts --stdio",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test test/*.test.ts",
+    "build": "node scripts/build.mjs",
+    "sidecar": "node scripts/build-sidecar.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.7.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.8.2"
+  }
+}
