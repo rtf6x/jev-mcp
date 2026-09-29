@@ -96,6 +96,15 @@ Endpoint examples (used verbatim):
   was rejected outright, every push failing the run in 0 s), the icon check ran under PowerShell
   on Windows where `test -f` does not exist, and the bundle smoke's `grep` pattern carried a `}`
   that the response does not have.
+- 2026-09-29: the tray item never appeared, and the first three attempts to see it (menu-bar
+  screenshots, a pixel diff against the app being closed, the window list) each missed it — the
+  item sits at the left end of the third-party extras, well left of where I was looking. A
+  temporary solid-square icon settled it: `TrayIcon` in Tauri 2 is reference-counted and removed
+  when the last handle drops, and `setup` was discarding it. It is now kept in the app state
+  (`app.manage(tray)`), and the icon is drawn as a macOS template image
+  (`icon_as_template(true)`) so the menu bar renders it in the adaptive monochrome style instead
+  of a dark glyph on a dark bar. Verified visually: the glyph is visible in the menu bar while
+  the app runs and gone after it exits.
 - 2026-09-29: Rust 1.74 (Homebrew) cannot even parse a dependency manifest that uses edition
   2024; the rustup toolchain on this machine is 1.98, so the build runs with
   `PATH="$HOME/.cargo/bin:$PATH"` and needs no change to the machine.
@@ -116,8 +125,14 @@ Endpoint examples (used verbatim):
   `desktop-app/icons-src/icon.png` is absent; it starts running after the icon is drawn.
 - Vercel reports cost as a string under `providerMetadata.gateway.cost`; `usage.cost` stays
   `null` there. Revisit if cost matters.
-- The tray menu was not inspected visually: enumerating menu-bar extras needs accessibility
-  permission. The app's own behaviour (spawns the sidecar, `/health`, tool call) was verified.
+- The tray icon is visually verified in the menu bar, but the menu itself has not been clicked:
+  driving menu-bar extras needs accessibility permission. Every item is wired in Rust
+  (`status`, `toggle`, `autostart`, `edit-env`, `open-logs`, `quit`) and the app compiles with
+  them; a click-through is still owed.
+- The icon is drawn as a macOS template image, so the menu bar shows its alpha outline, not its
+  colours: the OpenAI icon must stay a single silhouette on a transparent background (the
+  prompt in `tools/generate-icon.mjs` asks for exactly that), or the tray will show a solid
+  block.
 - `release.yml` has never been dispatched: it is lint-clean and will be exercised at the first
   release, which is also when the version bump, tag and artifact set get their first real run.
 - Windows and Linux desktop builds are configured but unverified on this machine; their CI jobs

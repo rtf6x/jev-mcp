@@ -280,6 +280,10 @@ fn build_tray(app: &AppHandle) -> tauri::Result<TrayIcon> {
         .menu(&menu)
         .icon(app.default_window_icon().unwrap().clone())
         .tooltip("Jev MCP")
+        // The menu bar draws a template icon in the adaptive monochrome style and inverts it
+        // with the system appearance. Without this the drawn icon was a dark glyph on a dark
+        // bar — present, but invisible. A no-op off macOS.
+        .icon_as_template(true)
         .on_menu_event(|app, event| match event.id.as_ref() {
             "toggle" => {
                 if app.state::<SidecarState>().running.load(Ordering::SeqCst) {
@@ -327,7 +331,10 @@ fn main() {
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
             let handle = app.handle().clone();
             ensure_env_file(&handle);
-            build_tray(&handle)?;
+            // The tray icon is reference-counted and removed as soon as the last handle drops,
+            // so it has to be kept in the app's state for the app's lifetime.
+            let tray = build_tray(&handle)?;
+            app.manage(tray);
             set_endpoint_label(&handle, &endpoint_label(&handle));
             start_sidecar(&handle);
             poll_health(handle);

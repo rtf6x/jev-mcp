@@ -19,9 +19,11 @@ const PROMPT = [
   "App icon for a developer tool that judges decisions, called Jev MCP.",
   "One bold centered glyph: a balance scale whose beam is a decision fork — two straight arms",
   "meeting at a single solid dot, each arm ending in a short square terminal.",
-  "Flat vector, geometric, even 2-pixel-weight strokes, single dark ink shape on a fully",
-  "transparent background, generous margin, no text, no letters, no numbers, no gradients,",
-  "no shadow, no 3D, no photographic elements. It must stay legible at 16 by 16 pixels.",
+  "Flat vector, geometric, even 2-pixel-weight strokes, a solid silhouette on a fully",
+  "transparent background (macOS renders it as a monochrome template image in the menu bar, so",
+  "the shape has to read from its outline alone), generous margin, no text, no letters, no",
+  "numbers, no gradients, no shadow, no 3D, no photographic elements.",
+  "It must stay legible at 16 by 16 pixels.",
 ].join(" ");
 
 const apiKey = process.env.OPENAI_API_KEY;
