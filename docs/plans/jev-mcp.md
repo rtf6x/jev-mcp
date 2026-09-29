@@ -82,10 +82,11 @@ Endpoint examples (used verbatim):
    `jev: Connected`; the entry it carried before pointed at the community `jevai.org` MCP and
    failed health checks with `401 Invalid or missing Jev API key`, which is what the owner saw
    as "Jev does not answer". Claude Desktop takes the stdio command from the README.
-10. CI workflows — **done**: `build.yml` is green on `main` (run 36572572759: typecheck, tests,
-    bundle, bundle smoke, and three desktop jobs that skip the build steps while the icon source
-    is absent). `release.yml` is written and lint-clean; it runs only when dispatched and is
-    exercised at the first release.
+10. CI workflows — **done**: `build.yml` is green on `main` with the icon in place, so the
+    desktop matrix really builds: run 36577912941 passed `Server` (27 s) plus
+    `Desktop (aarch64-apple-darwin)` (2 m 44 s), `Desktop (x86_64-unknown-linux-gnu)` (7 m 52 s)
+    and `Desktop (x86_64-pc-windows-msvc)` (13 m 24 s). `release.yml` is written and lint-clean;
+    it runs only when dispatched and is exercised at the first release.
 
 ## Ledger
 
@@ -136,6 +137,10 @@ Endpoint examples (used verbatim):
   `POST https://ai-gateway.vercel.sh/v1/evaluate` with `model: typesafe-ai/jev` and the gateway
   token from `omp token vercel-ai-gateway` answered HTTP 200, `{"answers":{"fixed":{"type":"boolean","probability":0.85}}}`.
   That is also the endpoint this server is pointed at for the end-to-end check.
+- 2026-09-29: the first run with the icon committed failed the Linux desktop job — the runner
+  lacked `glib-2.0.pc` and the rest of the webkit stack. Both workflows now install
+  `libwebkit2gtk-4.1-dev`, `libayatana-appindicator3-dev`, `librsvg2-dev` and `patchelf` on
+  Ubuntu, and run 36577912941 is green on all four jobs.
 - 2026-09-29: the twelve tools are wired into the owner's harnesses. omp's `mcp.json` gained a
   `jev` entry, Claude Code was re-pointed from the community endpoint to the local one
   (`claude mcp list` now shows `jev: Connected`; the old entry answered
