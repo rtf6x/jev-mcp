@@ -139,6 +139,17 @@ Endpoint examples (used verbatim):
   `POST https://ai-gateway.vercel.sh/v1/evaluate` with `model: typesafe-ai/jev` and the gateway
   token from `omp token vercel-ai-gateway` answered HTTP 200, `{"answers":{"fixed":{"type":"boolean","probability":0.85}}}`.
   That is also the endpoint this server is pointed at for the end-to-end check.
+- 2026-09-30: the community key is out of every config on this machine. It was never in a file:
+  a value search across the home found it only in the run records of my own throwaway daemons
+  (removed) and in session transcripts (inert). It survives as an exported `JEV_API_KEY` in the
+  environment that launched the session — a clean login shell carries none, and `ps` cannot show
+  it — which is why a probe inherited it and the endpoint answered 401. Every command that starts
+  the server from a shell shields itself with `env -u JEV_API_KEY`. The last live consumer of the
+  community endpoint is not on this machine at all: `rootfox.cc-infra` gives gomodel's MCP gateway
+  a `jev` upstream at `https://www.jevai.org/api/mcp` with `Bearer ${JEV_API_KEY}` (both copies of
+  `config.yaml`, line 75), and the key itself lives in that deployment's environment. Our twelve
+  tools carry different names from the community's six, so re-pointing that upstream is a change
+  of its clients' tool names.
 - 2026-09-30: the harness wiring is live on the machine. omp (`~/.omp/agent/mcp.json`) and
   opencode (`~/.config/opencode/opencode.json`) carry `jev` → `http://127.0.0.1:18791/mcp`,
   Claude Code answers `Connected`, and Claude Desktop runs the stdio recipe
@@ -146,8 +157,8 @@ Endpoint examples (used verbatim):
   own `.env`) — verified by calling `jev_noul` through that exact command (0.19 → uncertain).
   opencode had **two** `jev` keys: the local one and a stale community one carrying
   `Authorization: Bearer {env:JEV_API_KEY}`; the last duplicate wins, so opencode had been talking
-  to the community endpoint all along. The stale one is gone, and it was the only live reference
-  to that endpoint left anywhere.
+  to the community endpoint all along. The stale one is gone; the only other place that still
+  points at that endpoint is gomodel's gateway in `rootfox.cc-infra` (see the entry above).
 - 2026-09-30: neither the app nor the server carries the skill. `tools/list` is the whole
   interface (`prompts/list` and `resources/list` answer `Method not found`); the skill is a file in
   the skillset — `skills/jev` → `~/.agents/skills/jev` → linked into `~/.omp/agent/skills`,
