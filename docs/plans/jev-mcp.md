@@ -272,6 +272,15 @@ Endpoint examples (used verbatim):
   with this build (quarantine cleared, launched from `/Applications`, `/health` answers `0.1.4` and
   `tools/list` serves the twelve tools), so the tray and the harnesses now run from the notarized
   build instead of the ad-hoc `0.1.1`.
+- 2026-09-30: the installed build answers Jev for real. A `jev_verify` call through the tray app
+  returns `verdict: verified` with the full distribution, so the chain signed bundle → Node sidecar
+  → AI Gateway → Jev works end to end, and `claude mcp list` shows `jev … Connected` against the
+  notarized build. The first attempt answered `HTTP 401 Authentication failed`, and the cause was
+  not the app: its `.env` holds a `vck_…` gateway key that the gateway itself accepts (400 on a
+  malformed body, not 401). The key came from the shell the app was launched from —
+  `JEV_API_KEY=jev_…`, the *official* Jev key, a different provider — and the server's environment
+  variable wins over `.env`, which is the trap `skills/jev/reference/harnesses.md` documents.
+  `env -u JEV_API_KEY open "/Applications/Jev MCP.app"` starts it clean.
 
 ## Loose ends
 
