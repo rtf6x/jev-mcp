@@ -1,6 +1,6 @@
 {
   "name": "jev-mcp-desktop",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "Tray app that runs the Jev MCP server as a sidecar process",
   "license": "MIT",
