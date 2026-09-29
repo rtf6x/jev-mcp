@@ -67,10 +67,10 @@ Endpoint examples (used verbatim):
    source image and generates the Tauri icon set. Until it runs, `desktop-app/src-tauri/icons`
    is empty and the desktop build cannot start.
 9. Harness wiring (omp/Claude Code over HTTP, Claude Desktop over stdio) — pending.
-10. CI workflows — **written**: `build.yml` (typecheck, tests, bundle, bundle smoke, and a
-    desktop job that skips itself until the icon source exists) and `release.yml`
-    (manual: bump, tag, build, publish as a draft). Evidence: the run triggered by the commit
-    that added them.
+10. CI workflows — **done**: `build.yml` is green on `main` (run 36572572759: typecheck, tests,
+    bundle, bundle smoke, and three desktop jobs that skip the build steps while the icon source
+    is absent). `release.yml` is written and lint-clean; it runs only when dispatched and is
+    exercised at the first release.
 
 ## Ledger
 
@@ -90,6 +90,12 @@ Endpoint examples (used verbatim):
   left the sidecar holding the port, so the next launch died on `EADDRINUSE`. The app now
   spawns the server with `JEV_MCP_EXIT_WITH_PARENT=1`, and the server exits when that pipe
   closes (verified both ways: it leaves with a closing pipe, and stays up when the flag is off).
+- 2026-09-29 Task 10: `build.yml` green on `main` — run 36572572759, jobs `Server` (22 s) and
+  three `Desktop` jobs. Getting there took three fixes, all found by `actionlint` and by running
+  the exact command by hand: `hashFiles` is not available in a job-level `if` (the workflow file
+  was rejected outright, every push failing the run in 0 s), the icon check ran under PowerShell
+  on Windows where `test -f` does not exist, and the bundle smoke's `grep` pattern carried a `}`
+  that the response does not have.
 - 2026-09-29: Rust 1.74 (Homebrew) cannot even parse a dependency manifest that uses edition
   2024; the rustup toolchain on this machine is 1.98, so the build runs with
   `PATH="$HOME/.cargo/bin:$PATH"` and needs no change to the machine.
@@ -112,4 +118,7 @@ Endpoint examples (used verbatim):
   `null` there. Revisit if cost matters.
 - The tray menu was not inspected visually: enumerating menu-bar extras needs accessibility
   permission. The app's own behaviour (spawns the sidecar, `/health`, tool call) was verified.
-- Windows and Linux desktop builds are configured but unverified on this machine.
+- `release.yml` has never been dispatched: it is lint-clean and will be exercised at the first
+  release, which is also when the version bump, tag and artifact set get their first real run.
+- Windows and Linux desktop builds are configured but unverified on this machine; their CI jobs
+  skip the build until the icon source exists.
