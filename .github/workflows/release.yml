@@ -91,6 +91,7 @@ jobs:
       - name: Require the icon set
         # `npm run icons` draws it with OpenAI; the result is committed. Fail loudly rather
         # than ship a bundle without an icon.
+        shell: bash
         run: |
           test -f desktop-app/icons-src/icon.png \
             || { echo "::error::desktop-app/icons-src/icon.png is missing: run npm run icons and commit it"; exit 1; }

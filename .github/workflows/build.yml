@@ -25,10 +25,14 @@ jobs:
       - name: Smoke the bundle
         run: |
           set -o pipefail
-          JEV_MCP_ENV=/dev/null JEV_URL=https://api.typesafe.ai/v1/systemone JEV_API_KEY=smoke \
-            timeout 20 node mcp-server/dist/jev-mcp.cjs --stdio \
-            <<< '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"ci","version":"1"}}}' \
-            | head -1 | grep -q '"serverInfo":{"name":"jev-mcp"}'
+          # The pipe stays open while the answer arrives: closing stdin immediately can end the
+          # stdio session before the response is flushed.
+          {
+            printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"ci","version":"1"}}}'
+            sleep 3
+          } | JEV_MCP_ENV=/dev/null JEV_URL=https://api.typesafe.ai/v1/systemone JEV_API_KEY=smoke \
+              timeout 20 node mcp-server/dist/jev-mcp.cjs --stdio \
+            | head -1 | grep -q '"serverInfo":{"name":"jev-mcp"'
 
   desktop:
     name: Desktop (${{ matrix.target }})
@@ -51,6 +55,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Icon set present?
         id: icons
+        shell: bash
         run: |
           if [ -f desktop-app/icons-src/icon.png ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
