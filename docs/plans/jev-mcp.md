@@ -74,10 +74,10 @@ Endpoint examples (used verbatim):
    returned a verdict, and the tray icon is visible in the menu bar. Evidence: `Jev MCP.app`
    (144 MiB) in `target/release/bundle/macos`.
 8. Icon — **done**, and now the owner's art: `npm run icons` prepares the app icon from
-   `desktop-app/icons-src/icon-source.png` (his delivery) and renders the menu-bar glyph from
-   `desktop-app/icons-src/tray.svg`; `npm run icons:draw` is the image-model path that draws a new
-   art (`openai/gpt-image-2` through Vercel AI Gateway, no OpenAI key required). Sources and the
-   rules behind each are in `desktop-app/icons-src/README.md`.
+   `desktop-app/icons-src/icon-source.svg` (his delivery; `.png` is accepted too) and renders the
+   menu-bar glyph from `desktop-app/icons-src/tray.svg`. `npm run icons:draw` is the image-model
+   path that draws a new art (`openai/gpt-image-2` through Vercel AI Gateway, no OpenAI key
+   required). Sources and the rules behind each are in `desktop-app/icons-src/README.md`.
 9. Harness wiring — **done**: omp (`~/.omp/agent/mcp.json`), Claude Code
    (`claude mcp add --scope user --transport http jev http://127.0.0.1:18791/mcp`) and opencode
    (`~/.config/opencode/opencode.json`) all point at the local endpoint. Claude Code now reports
