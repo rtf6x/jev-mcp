@@ -34,19 +34,33 @@ const handshakeSchema = z.object({
 
 const healthSchema = z.object({ status: z.string(), endpoint: z.string(), model: z.string() });
 
-const verdictsSchema = z.object({
-  results: z.record(
-    z.object({ status: z.string(), label: z.string().nullable(), action: z.string(), reason: z.string().nullable() }),
-  ),
-  summary: z.record(z.number()),
+const noulSchema = z.object({
+  tool: z.literal("jev_noul"),
+  status: z.string(),
+  results: z.array(z.object({ probability: z.number().nullable(), label: z.string().nullable(), auto: z.boolean() })),
 });
 
-const testCall = {
+const noolCall = {
   jsonrpc: "2.0",
   id: 3,
   method: "tools/call",
-  params: { name: "jev_judge", arguments: { state: "help", questions: { is_urgent: { type: "bool", instructions: "Urgent?" } } } },
+  params: { name: "jev_noul", arguments: { propositions: ["Paris is the capital of France"] } },
 };
+
+const TWELVE = [
+  "jev_audit",
+  "jev_classify",
+  "jev_compare",
+  "jev_decide",
+  "jev_extract",
+  "jev_find",
+  "jev_gate",
+  "jev_noul",
+  "jev_rerank",
+  "jev_review",
+  "jev_screen",
+  "jev_verify",
+];
 
 describe("HTTP transport", () => {
   it("reports the configured endpoint on /health", async () => {
@@ -63,7 +77,7 @@ describe("HTTP transport", () => {
     );
   });
 
-  it("completes the MCP handshake and lists the judge tool", async () => {
+  it("completes the MCP handshake and lists exactly the twelve tools", async () => {
     await withServer(
       () => ({ status: 200, body: { answers: {} } }),
       async ({ port }) => {
@@ -74,37 +88,53 @@ describe("HTTP transport", () => {
 
         const listed = await rpc(port, { jsonrpc: "2.0", id: 2, method: "tools/list" });
         const tools = toolsListSchema.parse(listed.json.result).tools;
-        const judge = tools.find((tool) => tool.name === "jev_judge");
-        assert.ok(judge, "jev_judge is listed");
-        const required = judge.inputSchema?.["required"];
-        assert.deepEqual(required, ["state", "questions"]);
+        assert.deepEqual(
+          tools.map((tool) => tool.name).sort(),
+          TWELVE,
+        );
+        for (const tool of tools) {
+          assert.equal(tool.inputSchema?.["type"], "object", `${tool.name} declares an object input schema`);
+        }
+        const verify = tools.find((tool) => tool.name === "jev_verify");
+        assert.deepEqual(verify?.inputSchema?.["required"], ["claims", "evidence"]);
+        assert.equal(verify?.inputSchema?.["additionalProperties"], false, "unknown keys are rejected");
       },
     );
   });
 
-  it("forwards a tool call to the endpoint and returns verdicts", async () => {
+  it("forwards one tool call to the endpoint and returns its payload", async () => {
     await withServer(
       () => ({
         status: 200,
         body: {
           model: "jev-1.13.0",
-          answers: { is_urgent: { type: "noul", noul: 0.95 } },
+          answers: { p_proposition0: { type: "noul", noul: 0.95 } },
           usage: { input_tokens: 10, output_tokens: 2 },
         },
       }),
       async ({ endpoint, port }) => {
-        const call = toolResult((await rpc(port, testCall)).json);
+        const call = toolResult((await rpc(port, noolCall)).json);
         assert.equal(call.isError, undefined);
-        const verdicts = verdictsSchema.parse(call.structuredContent);
-        assert.equal(verdicts.results["is_urgent"]?.label, "yes");
-        assert.equal(verdicts.results["is_urgent"]?.action, "auto");
-        assert.equal(verdicts.summary["auto"], 1);
-        assert.equal(verdictsSchema.parse(JSON.parse(toolText(call))).results["is_urgent"]?.action, "auto");
+        const body = noulSchema.parse(JSON.parse(toolText(call)));
+        assert.equal(body.status, "ok");
+        assert.equal(body.results[0]?.label, "likely");
+        assert.equal(body.results[0]?.auto, true);
+        assert.equal(endpoint.requests.length, 1, "one upstream request per tool call");
+        assert.deepEqual(JSON.parse(toolText(call))["usage"], { input_tokens: 10, output_tokens: 2, cost: null });
 
         assert.deepEqual(requestBody(endpoint.requests[0]), {
           model: "jev-latest",
-          state: "help",
-          questions: { is_urgent: { type: "noul", instructions: "Urgent?" } },
+          state: { propositions: [{ id: "proposition0", text: "Paris is the capital of France" }], context: null },
+          questions: {
+            p_proposition0: {
+              type: "noul",
+              instructions: "proposition `proposition0`: Paris is the capital of France",
+              criteria: {
+                true: "The proposition is likely true, given the supplied context (when present) and general knowledge",
+                false: "The proposition is likely not true",
+              },
+            },
+          },
         });
       },
     );
@@ -112,10 +142,11 @@ describe("HTTP transport", () => {
 
   it("spells the yes/no question for the configured endpoint", async () => {
     await withServer(
-      () => ({ status: 200, body: { answers: { is_urgent: { type: "boolean", probability: 0.9 } } } }),
+      () => ({ status: 200, body: { answers: { p_proposition0: { type: "boolean", probability: 0.9 } } } }),
       async ({ endpoint, port }) => {
-        await rpc(port, testCall);
-        assert.equal(requestBody(endpoint.requests[0]).questions["is_urgent"]?.type, "boolean");
+        const call = toolResult((await rpc(port, noolCall)).json);
+        assert.equal(noulSchema.parse(JSON.parse(toolText(call))).results[0]?.label, "likely");
+        assert.equal(requestBody(endpoint.requests[0]).questions["p_proposition0"]?.type, "boolean");
       },
       "boolean",
     );
@@ -125,7 +156,7 @@ describe("HTTP transport", () => {
     await withServer(
       () => ({ status: 401, text: '{"error":{"message":"Missing Authentication header"}}' }),
       async ({ port }) => {
-        const call = toolResult((await rpc(port, testCall)).json);
+        const call = toolResult((await rpc(port, noolCall)).json);
         assert.equal(call.isError, true);
         const text = toolText(call);
         assert.match(text, /HTTP 401/);

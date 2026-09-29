@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Jev MCP server: judge tool over a configured Jev endpoint",
+  "description": "Jev MCP server: the twelve Jev judgment tools over a configured Jev endpoint",
   "license": "MIT",
   "bin": {
     "jev-mcp": "dist/jev-mcp.cjs"

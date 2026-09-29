@@ -1,8 +1,8 @@
 # Jev MCP
 
-An MCP server that gives your coding agents a **judge**: it hands Jev a state and a set of
-typed questions and comes back with a verdict per question — the chosen option or probability,
-the full distribution, confidence, and an action (`auto` or `review`).
+An MCP server that gives your coding agents a **judge**: twelve purpose-built tools that hand Jev
+a state and a set of typed questions and come back with a verdict — the chosen option or
+probability, the full distribution, confidence, and an action (`auto`, `review` or `escalate`).
 
 One URL, one key, one model. The endpoint is configuration, not code: the same server talks to
 TypeSafe, OpenRouter, Vercel AI Gateway, or any other System One-compatible endpoint.
@@ -12,10 +12,10 @@ See the [TypeSafe docs](https://docs.typesafe.ai/) for the model itself.
 
 ## What it is not
 
-It is not a chat model, not a browser tool, and not a wrapper around somebody's prompt pack. It
-does not invent questions, it does not translate responses into its own vocabulary beyond
-spelling the yes/no question the way your endpoint expects, and it never substitutes a value
-for a malformed answer.
+It is not a chat model, not a browser tool, and not a wrapper around somebody's prompt pack. The
+question design lives in the tools, not in your prompt: it does not translate answers into its own
+vocabulary beyond spelling the yes/no question the way your endpoint expects, and it never
+substitutes a value for a malformed answer.
 
 ## Install
 
@@ -107,53 +107,79 @@ startup, **Edit .env** and Open logs. Its `.env` is its own, in the app's config
 `.env.example` on first launch and handed to the sidecar through `JEV_MCP_ENV`. The sidecar
 carries Node inside it, so the app needs no Node installation on the machine it runs on.
 
-## The tool
+## The tools
 
-### `jev_judge`
+The server exposes twelve community judgment tools (ported from
+[jkudish/jev-mcp](https://github.com/jkudish/jev-mcp), MIT — see `THIRD-PARTY-NOTICES.md`). Each
+one turns a state into typed questions, posts **one** request to `JEV_URL`, and validates the
+answers fail-closed.
 
-| Argument | Required | Meaning |
+| Tool | What it answers | Arguments (defaults in brackets) |
 | --- | --- | --- |
-| `state` | yes | What the questions are judged against: string, JSON object, or JSON array. |
-| `questions` | yes | Question id → `{ type, instructions, criteria }`. Every question is judged against the same state, independently — batch them into one call. |
-| `model` | no | Overrides `JEV_MODEL` for this call. |
-| `accept_at` | no | Action threshold, default `0.85`. |
-| `margin_at` | no | Choice answers: winner-to-runner-up gap required for `auto`, default `0.5`. |
+| `jev_verify` | How the evidence relates to each claim: `verified` / `contradicted` / `unsupported` | `claims`, `evidence`, `auto_accept` [0.8] |
+| `jev_screen` | Whether fetched text is safe to read: injection, substance, relevance → `pass` / `review` / `block` / `skip` | `text`, `purpose`, `block_at` [0.75], `review_at` [0.25] |
+| `jev_noul` | A calibrated probability per proposition (`likely` / `unlikely` / `uncertain`) | `propositions`, `context`, `auto_accept` [0.85] |
+| `jev_find` | Which candidate best answers a query, and whether any candidate does | `query`, `candidates`, `top_k` [5] |
+| `jev_rerank` | Every candidate's relevance, sorted | `query`, `candidates`, `top_k` [all] |
+| `jev_classify` | One class per item from a shared catalog, with a margin-gated decision | `items`, `classes`, `purpose`, `context`, `auto_accept` [0.85], `minimum_margin` [0.5] |
+| `jev_decide` | Which bounded alternative fits the evidence and priorities: escape hatches (`ask_user` / `investigate` / `none`) plus a per-requirement check | `decision`, `evidence`, `priorities`, `candidates`, `requirements`, `escape_hatches` [true], `escalate_on_contradiction` [false] |
+| `jev_compare` | `same_fact` / `contradicts` / `different_facts` for two passages, optionally per named aspect | `passage_a`, `passage_b`, `aspects`, `purpose`, `auto_accept` [0.85], `minimum_margin` [0.5] |
+| `jev_extract` | Which regex candidate is the field's true value, returned verbatim | `document`, `fields` (`id`, `pattern`, `flags`, `description`), `auto_accept` [0.85], `minimum_margin` [0.5] |
+| `jev_audit` | Whether an extracted value is wrong: hallucinated, off-target, incomplete, wrong format, or wrongly omitted | `source`, `records`, `wrong_at` [0.7] |
+| `jev_review` | Whether a proposed patch may be applied: four 0..2 rubric scores → `auto` / `review` / `escalate` | `request`, one of `diff` or `files`, `tests`, `auto_accept` [0.8], `review_at` [min(0.5, auto_accept)], `composite_floor` [0.7] |
+| `jev_gate` | A patch review **and** completion claims against evidence, in one call | `request`, one of `diff` or `files`, `claims`, `evidence`, `tests`, the `jev_review` thresholds |
 
-Question types follow the Jev primitives: `choice` (pick one of `criteria`), `score`
-(position on an ordered `criteria` array), and a yes/no question — written as `noul`, `bool` or
-`boolean`, and sent to the endpoint in whichever spelling `JEV_QUESTION_TYPE` names.
+### Question types
 
-Result, per question:
+Every question is one of the Jev primitives: `choice` (pick one of the criteria), `score`
+(position on an ordered rubric) and a yes/no question. The yes/no question is written in
+whichever spelling the configured endpoint expects — `JEV_QUESTION_TYPE=noul` or `boolean` — so
+the same server talks to TypeSafe, OpenRouter and Vercel AI Gateway with no provider branch. The
+answer readers accept `noul`, `probability` or `bool` for the yes/no probability, whichever the
+endpoint reports.
+
+### Results
+
+Each tool returns one JSON text block: `tool`, `model`, `provider` (`endpoint`, or `none` when no
+call was needed), `usage` (`input_tokens` / `output_tokens` / `cost`, read from either the
+snake_case or the camelCase spelling, `null` when the endpoint reported none), plus the tool's own
+fields — usually a `status`, one or more actions, and per-item results:
 
 ```jsonc
 {
-  "type": "choice",
-  "status": "ok",              // or invalid_response
-  "reason": null,              // why an answer was rejected
-  "value": "billing",          // option, level position (score), or yes-probability
-  "label": "payments",         // option or level description; yes / no / uncertain for yes/no
-  "probabilities": { "billing": 0.94, "technical": 0.06 },
-  "confidence": 0.9,
-  "margin": 0.88,              // choice only
-  "action": "auto"             // or review
+  "tool": "jev_classify",
+  "summary": { "items": 2, "auto": 1, "review": 1, "invalid_response": 0, "by_class": { "billing": 1 } },
+  "thresholds": { "auto_accept": 0.85, "minimum_margin": 0.5 },
+  "results": [
+    { "id": "refund", "classification": "billing", "probabilities": { "billing": 0.95, "technical": 0.05 },
+      "confidence": 0.9, "margin": 0.9, "top_probability": 0.95, "decision": "auto" }
+  ],
+  "usage": { "input_tokens": 120, "output_tokens": 24, "cost": null }
 }
 ```
 
-plus `endpoint`, `model`, `summary` (`questions`, `auto`, `review`, `invalid`), `usage`, and
-`raw` — the endpoint's response exactly as received.
+### Fail-closed rules
 
-Actions come from thresholds, not from hope: a choice is `auto` only at
-`top ≥ accept_at` **and** `margin ≥ margin_at`; a score only when its confidence clears
-`accept_at`; a yes/no answer is `uncertain` (and `review`) between `1 - accept_at` and
-`accept_at`. Tune the thresholds against your own data —
-[confidence is not correctness](https://docs.typesafe.ai/confidence).
+An action comes from thresholds, never from hope, and every tool exposes its thresholds per call:
+`auto` requires the top probability to clear `auto_accept` at `jev_verify` (where it is the answer
+confidence), `jev_noul` and `jev_find`, the winner-to-runner-up margin to clear `minimum_margin`
+as well at `jev_classify`, `jev_compare` and `jev_extract`, and `jev_screen` routes on
+`block_at` / `review_at` instead. `jev_review` and `jev_gate` require `safe_to_apply` and the
+rubric confidence at `auto_accept` with the weighted composite at `composite_floor`; `jev_audit`
+escalates the whole audit when any value's max-gated P(wrong) reaches `wrong_at`. Everything else
+is `review` (or `escalate` in the review family), and truncated or incomplete input can only make
+an action stronger — never `auto`.
 
-Fail-closed rules: a missing answer, a distribution that does not cover the criteria or does
-not sum to one, a `choice` that is not the highest-probability option, a score outside the
-levels, a malformed confidence, or an unsupported question type all come back
-`status: "invalid_response"` with `action: "review"`. An endpoint error is a tool error
+A missing or malformed answer is `status: "invalid_response"` with action `review`, never a
+guessed value: a distribution that does not cover the criteria or does not sum to one, a `choice`
+that is not the highest-probability option, a score outside the rubric, a confidence that is
+present but malformed, a regex that timed out, a candidate universe that was capped, or an answer
+that is simply absent. An endpoint failure — transport, or an HTTP error status — is a tool error
 carrying the upstream status and body. There is no fallback and no retry: a paid call is never
 silently repeated.
+
+Tune the thresholds against your own data —
+[confidence is not correctness](https://docs.typesafe.ai/confidence).
 
 ## Development
 
@@ -173,4 +199,5 @@ where Homebrew's `rust` shadows a newer rustup toolchain, put rustup's first:
 
 ## Licence
 
-MIT
+MIT. The twelve tools are ported from [jkudish/jev-mcp](https://github.com/jkudish/jev-mcp) (MIT);
+see `THIRD-PARTY-NOTICES.md` for the upstream commit, the adapted files and the licence texts.

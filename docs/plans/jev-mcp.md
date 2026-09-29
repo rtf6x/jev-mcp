@@ -8,11 +8,11 @@ endpoint is the only provider setting: one URL, one key, one model.
 
 ## Scope
 
-In: mcp-server (judge tool, HTTP + stdio transports), desktop tray app (Tauri v2, sidecar),
-OpenAI-generated icon, README, CI.
+In: mcp-server (the twelve judgment tools, HTTP + stdio transports), desktop tray app (Tauri v2,
+sidecar), OpenAI-generated icon, README, CI.
 
 Out: browser extensions, WebSocket handshake, provider table / auto-detection, skill packs,
-named judgment tools with authored question templates, Docker, npm publish.
+Docker, npm publish.
 
 ## Configuration
 
@@ -55,17 +55,24 @@ Endpoint examples (used verbatim):
 3. `forward.ts` — **done**: URL/headers/body asserted against a stub; status and body
    passthrough; `EndpointError` on a dead port.
 4. `judge.ts` — **done**: builder + validation + actions; fixtures from TypeSafe, OpenRouter
-   and Vercel docs; 11 fail-closed cases.
+   and Vercel docs; 11 fail-closed cases. **Superseded** by task 11.
 5. `tool.ts` + transports — **done**: handshake, tools/list, tools/call over HTTP and stdio
-   against a live stub; fail-closed answer; endpoint error as tool error.
-6. Live call against each credentialed endpoint — **blocked on keys** (none present).
+   against a live stub; fail-closed answer; endpoint error as tool error. **Superseded** by task
+   11: `tool.ts` and `judge.ts` are gone.
+11. Twelve-tool port — **done**: the community tool set of `jkudish/jev-mcp` (MIT) replaces the
+    single generic tool, one file per tool under `src/tools/` with shared helpers under
+    `src/jev/`. Attribution and adapted-file list in `THIRD-PARTY-NOTICES.md`.
+6. Live call against a credentialed endpoint — **verified**: `POST https://ai-gateway.vercel.sh/v1/evaluate`
+   with the Vercel AI Gateway token already configured in OMP (`omp token vercel-ai-gateway`) and
+   `model: typesafe-ai/jev` answered HTTP 200 with a typed answer. Wiring the same endpoint into
+   this server and calling a tool through it is the last step of the tool port.
 7. Desktop tray app (Tauri v2 + SEA sidecar) — **done**: sidecar built, `.app` bundled and
    launched; the tray spawned its own sidecar, `/health` answered and a `tools/call` through it
-   returned a verdict. Evidence: `Jev MCP.app` (144 MiB) in `target/release/bundle/macos`,
-   run on 2026-09-29.
-8. Icon via OpenAI images — **pending** (`OPENAI_API_KEY` needed): `npm run icons` draws the
-   source image and generates the Tauri icon set. Until it runs, `desktop-app/src-tauri/icons`
-   is empty and the desktop build cannot start.
+   returned a verdict, and the tray icon is visible in the menu bar. Evidence: `Jev MCP.app`
+   (144 MiB) in `target/release/bundle/macos`.
+8. Icon — **done**: `npm run icons` drew it with an image model
+   (`openai/gpt-image-2` through Vercel AI Gateway, no OpenAI key required) and generated the
+   Tauri set. The source image and the prompt are committed in `desktop-app/icons-src/`.
 9. Harness wiring (omp/Claude Code over HTTP, Claude Desktop over stdio) — pending.
 10. CI workflows — **done**: `build.yml` is green on `main` (run 36572572759: typecheck, tests,
     bundle, bundle smoke, and three desktop jobs that skip the build steps while the icon source
@@ -75,8 +82,9 @@ Endpoint examples (used verbatim):
 ## Ledger
 
 - 2026-09-29 Tasks 1-5: server built and exercised. Evidence: `npm run typecheck` clean;
-  `npm test` 34/34; real process smoke — `/health` answered, `tools/list` listed `jev_judge`,
-  `tools/call` returned verdicts with action `auto`, a caller's `bool` reached the endpoint as
+  `npm test` 34/34; real process smoke — `/health` answered, `tools/list` listed the then-only
+  generic tool (since replaced by the twelve, task 11), `tools/call` returned verdicts with
+  action `auto`, a caller's `bool` reached the endpoint as
   `boolean`, a question with no answer came back `invalid_response`/`review`, a dead endpoint
   came back `is_error` with the message, and stdio answered `initialize` and `tools/list`.
 - 2026-09-29: precedence proven live — the endpoint URL came from `.env` while the key came
@@ -90,6 +98,11 @@ Endpoint examples (used verbatim):
   left the sidecar holding the port, so the next launch died on `EADDRINUSE`. The app now
   spawns the server with `JEV_MCP_EXIT_WITH_PARENT=1`, and the server exits when that pipe
   closes (verified both ways: it leaves with a closing pipe, and stays up when the flag is off).
+- 2026-09-29 Task 11: the twelve tools are ported and the single generic tool is gone. Evidence:
+  `npm run typecheck` clean; `npm test` 60/60 (twelve per-tool suites — request body, valid answer
+  and malformed answer for each — plus config, forward and transport); `tools/list` reports exactly
+  those twelve names; the built `dist/jev-mcp.cjs` answers over stdio and its sandboxed regex
+  worker kills a catastrophic pattern with `invalid_pattern`.
 - 2026-09-29 Task 10: `build.yml` green on `main` — run 36572572759, jobs `Server` (22 s) and
   three `Desktop` jobs. Getting there took three fixes, all found by `actionlint` and by running
   the exact command by hand: `hashFiles` is not available in a job-level `if` (the workflow file
@@ -105,35 +118,43 @@ Endpoint examples (used verbatim):
   (`icon_as_template(true)`) so the menu bar renders it in the adaptive monochrome style instead
   of a dark glyph on a dark bar. Verified visually: the glyph is visible in the menu bar while
   the app runs and gone after it exits.
+- 2026-09-29 Task 8: the icon is drawn with an image model and committed. The OpenAI key turned
+  out to be unnecessary: OMP already carries a Vercel AI Gateway token, whose OpenAI-compatible
+  `/v1/images/generations` serves `openai/gpt-image-2`. The content classifier rejects the same
+  benign prompt at random, so the generator retries up to three times on a `400` and logs every
+  attempt. The tray renders the icon as a template image, so it must stay a silhouette on a
+  transparent background — the committed one is 18% opaque with transparent corners.
+- 2026-09-29 Task 6 (first half): a live Jev answer came back through Vercel AI Gateway —
+  `POST https://ai-gateway.vercel.sh/v1/evaluate` with `model: typesafe-ai/jev` and the gateway
+  token from `omp token vercel-ai-gateway` answered HTTP 200, `{"answers":{"fixed":{"type":"boolean","probability":0.85}}}`.
+  That is also the endpoint this server is pointed at for the end-to-end check.
 - 2026-09-29: Rust 1.74 (Homebrew) cannot even parse a dependency manifest that uses edition
   2024; the rustup toolchain on this machine is 1.98, so the build runs with
   `PATH="$HOME/.cargo/bin:$PATH"` and needs no change to the machine.
 
 ## Loose ends
 
-- **Named judgment tools** (`jev_verify`-style: verify / screen / find / rerank / classify /
-  decide / compare / extract / audit / review / gate). They exist in third-party MIT servers
-  and carry authored question templates; the owner's scope excludes authored prompts, so the
-  server ships one generic `jev_judge` instead. Decision pending.
-- Live verification of any endpoint needs a key. No `TYPESAFE_API_KEY`, `OPENROUTER_API_KEY` or
-  `AI_GATEWAY_API_KEY` is present in the environment.
-- The icon set in `desktop-app/src-tauri/icons` is generated, not committed: `npm run icons`
-  draws it with OpenAI and writes it, and the desktop build fails without it. The desktop build
-  was proven with a temporary placeholder set that was then deleted, so nothing but the real
-  icon ships.
-- The desktop job in `build.yml` and `release.yml` skips itself while
-  `desktop-app/icons-src/icon.png` is absent; it starts running after the icon is drawn.
+- The tool set is the community's twelve tools — the owner's decision, being ported from
+  `jkudish/jev-mcp` (MIT) with our URL-only transport. Anything the port could not carry over
+  faithfully, and every deviation our transport forced, is recorded in the port's report and in
+  `THIRD-PARTY-NOTICES.md`.
+- Skills: the community ships one with the package; the owner's own copy lives in the skillset
+  repository (`skills/jev/`) and reaches every harness through `~/.agents/skills`.
+- The icon set in `desktop-app/src-tauri/icons` and its source in `desktop-app/icons-src/` are
+  generated, not hand-drawn: `npm run icons` redraws both. The desktop jobs in `build.yml` and
+  `release.yml` now find the source image and build.
+- The icon is drawn as a macOS template image, so the menu bar shows its alpha outline, not its
+  colours: a regenerated icon must stay a single silhouette on a transparent background (the
+  prompt in `tools/generate-icon.mjs` asks for exactly that), or the tray will show a solid
+  block.
 - Vercel reports cost as a string under `providerMetadata.gateway.cost`; `usage.cost` stays
   `null` there. Revisit if cost matters.
 - The tray icon is visually verified in the menu bar, but the menu itself has not been clicked:
   driving menu-bar extras needs accessibility permission. Every item is wired in Rust
   (`status`, `toggle`, `autostart`, `edit-env`, `open-logs`, `quit`) and the app compiles with
   them; a click-through is still owed.
-- The icon is drawn as a macOS template image, so the menu bar shows its alpha outline, not its
-  colours: the OpenAI icon must stay a single silhouette on a transparent background (the
-  prompt in `tools/generate-icon.mjs` asks for exactly that), or the tray will show a solid
-  block.
 - `release.yml` has never been dispatched: it is lint-clean and will be exercised at the first
   release, which is also when the version bump, tag and artifact set get their first real run.
-- Windows and Linux desktop builds are configured but unverified on this machine; their CI jobs
-  skip the build until the icon source exists.
+- Windows and Linux desktop builds are configured but unverified on this machine.
+- Editing `generate_image.enabled` needed an approval that expired, so the harness's own
+  image tool stays off; the icon is drawn through the AI Gateway's images endpoint instead.

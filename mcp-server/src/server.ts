@@ -2,14 +2,14 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import type { Config } from "./config.ts";
-import { registerJudgeTool } from "./tool.ts";
+import { registerAllTools } from "./tools/index.ts";
 import { SERVER_NAME, VERSION } from "./version.ts";
 
 const MAX_BODY_BYTES = 1 << 20;
 
 export function createMcpServer(config: Config): McpServer {
   const server = new McpServer({ name: SERVER_NAME, version: VERSION });
-  registerJudgeTool(server, config);
+  registerAllTools(server, config);
   return server;
 }
 
