@@ -90,6 +90,12 @@ Claude Desktop and other stdio-only hosts:
 }
 ```
 
+A config that already carries a `jev` entry gets that entry **replaced**, never a second one: a
+JSON object keeps the last duplicate key, so the stale entry wins and the client keeps talking to
+the old endpoint while the file still looks right. The server answers `tools/list` only — no
+prompts and no resources; the skill that tells an agent which tool to call lives in the skillset
+(`skills/jev`), not in this repository.
+
 ## Desktop app
 
 `desktop-app/` is a tray app that runs the server for you: it spawns the sidecar on launch,

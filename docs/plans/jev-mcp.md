@@ -139,6 +139,20 @@ Endpoint examples (used verbatim):
   `POST https://ai-gateway.vercel.sh/v1/evaluate` with `model: typesafe-ai/jev` and the gateway
   token from `omp token vercel-ai-gateway` answered HTTP 200, `{"answers":{"fixed":{"type":"boolean","probability":0.85}}}`.
   That is also the endpoint this server is pointed at for the end-to-end check.
+- 2026-09-30: the harness wiring is live on the machine. omp (`~/.omp/agent/mcp.json`) and
+  opencode (`~/.config/opencode/opencode.json`) carry `jev` → `http://127.0.0.1:18791/mcp`,
+  Claude Code answers `Connected`, and Claude Desktop runs the stdio recipe
+  (`/opt/homebrew/bin/node …/mcp-server/src/index.ts --stdio`, `JEV_MCP_ENV` pointing at the app's
+  own `.env`) — verified by calling `jev_noul` through that exact command (0.19 → uncertain).
+  opencode had **two** `jev` keys: the local one and a stale community one carrying
+  `Authorization: Bearer {env:JEV_API_KEY}`; the last duplicate wins, so opencode had been talking
+  to the community endpoint all along. The stale one is gone, and it was the only live reference
+  to that endpoint left anywhere.
+- 2026-09-30: neither the app nor the server carries the skill. `tools/list` is the whole
+  interface (`prompts/list` and `resources/list` answer `Method not found`); the skill is a file in
+  the skillset — `skills/jev` → `~/.agents/skills/jev` → linked into `~/.omp/agent/skills`,
+  `~/.claude/skills` and `~/.config/opencode/skills`. Installing the released app therefore adds
+  the twelve tools, not the skill.
 - 2026-09-29: the app icon is the owner's own art. He delivered a decision diamond branching
   into a green check and a red cross (neon on black, 1536×1024, transparent background) and asked
   for a single-colour version where the design needs one; he then delivered a vector trace of the
