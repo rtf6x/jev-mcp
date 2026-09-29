@@ -40,6 +40,7 @@ Requires Node 22.18 or newer. The server runs the TypeScript sources directly.
 | `MCP_HTTP_PORT` | `18791` | Port for the HTTP transport. |
 | `JEV_TIMEOUT_MS` | `60000` | Whole-request deadline for the upstream call. |
 | `JEV_MCP_ENV` | `<cwd>/.env` | Path of the env file to read. |
+| `JEV_MCP_EXIT_WITH_PARENT` | `0` | `1` makes the server exit when its stdin closes: the tray app pipes stdin, so the server leaves when the app does instead of holding the port as an orphan. Leave it off for a host that runs without a parent pipe. |
 
 Real environment variables win over `.env` entries; the file only fills what the environment
 does not carry. No keys are read from anywhere else.
@@ -88,6 +89,23 @@ Claude Desktop and other stdio-only hosts:
   }
 }
 ```
+
+## Desktop app
+
+`desktop-app/` is a tray app that runs the server for you: it spawns the sidecar on launch,
+keeps it in the menu bar, and gives you the settings without a terminal.
+
+```bash
+npm run icons                       # once: draws the icon with OpenAI (needs OPENAI_API_KEY)
+npm run sidecar -- aarch64-apple-darwin   # once per target: bundles the server into the app
+npm run desktop                     # builds the .app
+```
+
+The tray shows the status and the configured endpoint, and offers Start/Stop, Launch at
+startup, **Edit .env** and Open logs. Its `.env` is its own, in the app's config directory
+(`~/Library/Application Support/cc.rootfox.jev-mcp-desktop/.env` on macOS); it is created from
+`.env.example` on first launch and handed to the sidecar through `JEV_MCP_ENV`. The sidecar
+carries Node inside it, so the app needs no Node installation on the machine it runs on.
 
 ## The tool
 
@@ -142,9 +160,16 @@ silently repeated.
 ```bash
 npm test           # unit and end-to-end tests against a stub endpoint, no key needed
 npm run typecheck  # tsc --noEmit
+npm run build      # esbuild bundle: mcp-server/dist/jev-mcp.cjs
+npm run sidecar -- <rust-target-triple>   # SEA executable for the tray app
+npm run desktop:dev                       # tray app in dev mode
 ```
 
 The living plan is `docs/plans/jev-mcp.md`.
+
+The tray app compiles with a Rust toolchain of 1.77 or newer (Tauri v2's minimum). On a machine
+where Homebrew's `rust` shadows a newer rustup toolchain, put rustup's first:
+`PATH="$HOME/.cargo/bin:$PATH" npm run desktop`.
 
 ## Licence
 

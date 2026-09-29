@@ -1,0 +1,15 @@
+{
+  "name": "jev-mcp-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tray app that runs the Jev MCP server as a sidecar process",
+  "license": "MIT",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build --bundles app",
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0"
+  }
+}

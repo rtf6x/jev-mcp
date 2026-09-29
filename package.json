@@ -5,16 +5,21 @@
   "description": "MCP server that forwards Jev judgments to the configured Jev endpoint",
   "license": "MIT",
   "workspaces": [
-    "mcp-server"
+    "mcp-server",
+    "desktop-app"
   ],
   "engines": {
     "node": ">=22.18.0"
   },
   "scripts": {
     "start": "npm start --workspace mcp-server",
+    "stdio": "npm run stdio --workspace mcp-server",
     "typecheck": "npm run typecheck --workspace mcp-server",
     "test": "npm test --workspace mcp-server",
     "build": "npm run build --workspace mcp-server",
-    "sidecar": "npm run sidecar --workspace mcp-server"
+    "sidecar": "npm run sidecar --workspace mcp-server --",
+    "desktop": "npm run build --workspace desktop-app",
+    "desktop:dev": "npm run dev --workspace desktop-app",
+    "icons": "node tools/generate-icon.mjs"
   }
 }

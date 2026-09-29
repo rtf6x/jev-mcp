@@ -6,7 +6,7 @@
   "description": "Jev MCP server: judge tool over a configured Jev endpoint",
   "license": "MIT",
   "bin": {
-    "jev-mcp": "dist/index.js"
+    "jev-mcp": "dist/jev-mcp.cjs"
   },
   "engines": {
     "node": ">=22.18.0"
@@ -26,6 +26,7 @@
   "devDependencies": {
     "@types/node": "^22.10.0",
     "esbuild": "^0.25.0",
+    "postject": "^1.0.0-alpha.6",
     "typescript": "^5.8.2"
   }
 }

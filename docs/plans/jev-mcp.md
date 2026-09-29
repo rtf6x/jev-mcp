@@ -59,10 +59,18 @@ Endpoint examples (used verbatim):
 5. `tool.ts` + transports — **done**: handshake, tools/list, tools/call over HTTP and stdio
    against a live stub; fail-closed answer; endpoint error as tool error.
 6. Live call against each credentialed endpoint — **blocked on keys** (none present).
-7. Desktop tray app (Tauri v2 + SEA sidecar) — pending.
-8. Icon via OpenAI images — pending (`OPENAI_API_KEY` needed).
+7. Desktop tray app (Tauri v2 + SEA sidecar) — **done**: sidecar built, `.app` bundled and
+   launched; the tray spawned its own sidecar, `/health` answered and a `tools/call` through it
+   returned a verdict. Evidence: `Jev MCP.app` (144 MiB) in `target/release/bundle/macos`,
+   run on 2026-09-29.
+8. Icon via OpenAI images — **pending** (`OPENAI_API_KEY` needed): `npm run icons` draws the
+   source image and generates the Tauri icon set. Until it runs, `desktop-app/src-tauri/icons`
+   is empty and the desktop build cannot start.
 9. Harness wiring (omp/Claude Code over HTTP, Claude Desktop over stdio) — pending.
-10. CI workflows, release workflow — pending.
+10. CI workflows — **written**: `build.yml` (typecheck, tests, bundle, bundle smoke, and a
+    desktop job that skips itself until the icon source exists) and `release.yml`
+    (manual: bump, tag, build, publish as a draft). Evidence: the run triggered by the commit
+    that added them.
 
 ## Ledger
 
@@ -73,6 +81,18 @@ Endpoint examples (used verbatim):
   came back `is_error` with the message, and stdio answered `initialize` and `tools/list`.
 - 2026-09-29: precedence proven live — the endpoint URL came from `.env` while the key came
   from the environment, which wins over the file.
+- 2026-09-29 Task 7: the bundled CommonJS server and the SEA sidecar both serve MCP
+  (`dist/jev-mcp.cjs`, `binaries/mcp-server-aarch64-apple-darwin`), and the tray app spawns the
+  sidecar from inside the bundle. The tray menu itself was not inspected visually (enumerating
+  menu-bar extras needs accessibility permission); the build path that creates it ran, since
+  `setup` returns `Err` and the app exits if it fails.
+- 2026-09-29: fixed a real defect found while testing the app — a hard kill of the tray process
+  left the sidecar holding the port, so the next launch died on `EADDRINUSE`. The app now
+  spawns the server with `JEV_MCP_EXIT_WITH_PARENT=1`, and the server exits when that pipe
+  closes (verified both ways: it leaves with a closing pipe, and stays up when the flag is off).
+- 2026-09-29: Rust 1.74 (Homebrew) cannot even parse a dependency manifest that uses edition
+  2024; the rustup toolchain on this machine is 1.98, so the build runs with
+  `PATH="$HOME/.cargo/bin:$PATH"` and needs no change to the machine.
 
 ## Loose ends
 
@@ -82,7 +102,14 @@ Endpoint examples (used verbatim):
   server ships one generic `jev_judge` instead. Decision pending.
 - Live verification of any endpoint needs a key. No `TYPESAFE_API_KEY`, `OPENROUTER_API_KEY` or
   `AI_GATEWAY_API_KEY` is present in the environment.
+- The icon set in `desktop-app/src-tauri/icons` is generated, not committed: `npm run icons`
+  draws it with OpenAI and writes it, and the desktop build fails without it. The desktop build
+  was proven with a temporary placeholder set that was then deleted, so nothing but the real
+  icon ships.
+- The desktop job in `build.yml` and `release.yml` skips itself while
+  `desktop-app/icons-src/icon.png` is absent; it starts running after the icon is drawn.
 - Vercel reports cost as a string under `providerMetadata.gateway.cost`; `usage.cost` stays
   `null` there. Revisit if cost matters.
-- `src/version.ts` and `package.json` carry the version twice; the release script must keep
-  them in step.
+- The tray menu was not inspected visually: enumerating menu-bar extras needs accessibility
+  permission. The app's own behaviour (spawns the sidecar, `/health`, tool call) was verified.
+- Windows and Linux desktop builds are configured but unverified on this machine.

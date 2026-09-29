@@ -1,0 +1,135 @@
+name: Release
+
+# Manual only: a push never publishes. Bumps the patch version, commits and tags the tip of
+# main, builds the server bundle and the desktop bundles, then publishes the release.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Explicit version (default: bump the patch of the current one)
+        required: false
+        type: string
+      draft:
+        description: Publish as a draft
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    name: Bump version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Bump and tag
+        id: bump
+        run: |
+          set -euo pipefail
+          if [ -n "${{ inputs.version }}" ]; then
+            next=$(node scripts/bump-version.mjs "${{ inputs.version }}" | tail -1 | sed 's/.*→ //')
+          else
+            next=$(node scripts/bump-version.mjs | tail -1 | sed 's/.*→ //')
+          fi
+          git -c user.name="github-actions[bot]" -c user.email="github-actions[bot]@users.noreply.github.com" \
+            commit -am "Release $next" && git tag "v$next" && git push origin HEAD:main --tags
+          echo "version=$next" >> "$GITHUB_OUTPUT"
+
+  server:
+    name: Server bundle
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v${{ needs.version.outputs.version }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - name: Pack
+        run: |
+          mkdir -p dist-artifacts
+          cp mcp-server/dist/jev-mcp.cjs dist-artifacts/
+          cp .env.example dist-artifacts/
+          tar -czf "jev-mcp-server-${{ needs.version.outputs.version }}.tar.gz" -C dist-artifacts .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server-bundle
+          path: jev-mcp-server-*.tar.gz
+
+  desktop:
+    name: Desktop (${{ matrix.target }})
+    needs: version
+    if: ${{ hashFiles('desktop-app/icons-src/icon.png') != '' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: aarch64-apple-darwin
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v${{ needs.version.outputs.version }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - run: npm ci
+      - run: npm run sidecar --workspace mcp-server -- ${{ matrix.target }}
+      - run: npx --yes @tauri-apps/cli build
+        working-directory: desktop-app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.target }}
+          path: |
+            desktop-app/src-tauri/target/release/bundle/**/*.dmg
+            desktop-app/src-tauri/target/release/bundle/**/*.app.tar.gz
+            desktop-app/src-tauri/target/release/bundle/**/*.msi
+            desktop-app/src-tauri/target/release/bundle/**/*.exe
+            desktop-app/src-tauri/target/release/bundle/**/*.AppImage
+            desktop-app/src-tauri/target/release/bundle/**/*.deb
+
+  publish:
+    name: Publish
+    needs: [version, server, desktop]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Collect
+        run: find artifacts -type f -exec cp {} . \;
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.version.outputs.version }}
+          name: Jev MCP ${{ needs.version.outputs.version }}
+          draft: ${{ inputs.draft }}
+          generate_release_notes: true
+          files: |
+            jev-mcp-server-*.tar.gz
+            *.dmg
+            *.zip
+            *.msi
+            *.exe
+            *.AppImage
+            *.deb

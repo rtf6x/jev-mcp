@@ -1,0 +1,62 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  server:
+    name: Server
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - name: Test
+        run: npm test
+      - name: Bundle
+        run: npm run build
+      - name: Smoke the bundle
+        run: |
+          set -o pipefail
+          JEV_MCP_ENV=/dev/null JEV_URL=https://api.typesafe.ai/v1/systemone JEV_API_KEY=smoke \
+            timeout 20 node mcp-server/dist/jev-mcp.cjs --stdio \
+            <<< '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"ci","version":"1"}}}' \
+            | head -1 | grep -q '"serverInfo":{"name":"jev-mcp"}'
+
+  desktop:
+    name: Desktop (${{ matrix.target }})
+    # The tray app needs the icon set, which is drawn from desktop-app/icons-src/icon.png with
+    # OpenAI's image model (npm run icons) and committed. Until that image exists, this job is
+    # skipped rather than failing the build.
+    if: ${{ hashFiles('desktop-app/icons-src/icon.png') != '' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: aarch64-apple-darwin
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - run: npm ci
+      - name: Build the sidecar
+        run: npm run sidecar --workspace mcp-server -- ${{ matrix.target }}
+      - name: Build the app
+        run: npx --yes @tauri-apps/cli build
+        working-directory: desktop-app
