@@ -96,7 +96,7 @@ Claude Desktop and other stdio-only hosts:
 keeps it in the menu bar, and gives you the settings without a terminal.
 
 ```bash
-npm run icons                       # once: draws the icon with OpenAI (needs OPENAI_API_KEY)
+npm run icons                       # once: prepares the icon set from desktop-app/icons-src/
 npm run sidecar -- aarch64-apple-darwin   # once per target: bundles the server into the app
 npm run desktop                     # builds the .app
 ```
@@ -106,6 +106,11 @@ startup, **Edit .env** and Open logs. Its `.env` is its own, in the app's config
 (`~/Library/Application Support/cc.rootfox.jev-mcp-desktop/.env` on macOS); it is created from
 `.env.example` on first launch and handed to the sidecar through `JEV_MCP_ENV`. The sidecar
 carries Node inside it, so the app needs no Node installation on the machine it runs on.
+
+The app carries two icons, because macOS wants two different things: the colour app icon (a
+square tile the system shows in the Finder and the installer) and the menu-bar glyph, drawn
+from its alpha alone and repainted by the system for a light, dark or highlighted bar.
+`desktop-app/icons-src/README.md` holds the sources and how to rebuild them.
 
 ## The tools
 

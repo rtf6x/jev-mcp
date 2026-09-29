@@ -20,6 +20,10 @@
     "sidecar": "npm run sidecar --workspace mcp-server --",
     "desktop": "npm run build --workspace desktop-app",
     "desktop:dev": "npm run dev --workspace desktop-app",
-    "icons": "node tools/generate-icon.mjs"
+    "icons": "node tools/build-icons.mjs",
+    "icons:draw": "node tools/generate-icon.mjs"
+  },
+  "devDependencies": {
+    "sharp": "^0.35.5"
   }
 }

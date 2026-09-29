@@ -53,33 +53,19 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - name: Icon set present?
-        id: icons
-        shell: bash
-        run: |
-          if [ -f desktop-app/icons-src/icon.png ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-          fi
       - uses: actions/setup-node@v4
-        if: steps.icons.outputs.ready == 'true'
         with:
           node-version: 24
           cache: npm
       - uses: dtolnay/rust-toolchain@stable
-        if: steps.icons.outputs.ready == 'true'
       - name: Install Linux webkit dependencies
-        if: matrix.os == 'ubuntu-latest' && steps.icons.outputs.ready == 'true'
+        if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
       - run: npm ci
-        if: steps.icons.outputs.ready == 'true'
       - name: Build the sidecar
-        if: steps.icons.outputs.ready == 'true'
         run: npm run sidecar --workspace mcp-server -- ${{ matrix.target }}
       - name: Build the app
-        if: steps.icons.outputs.ready == 'true'
         run: npx --yes @tauri-apps/cli build
         working-directory: desktop-app

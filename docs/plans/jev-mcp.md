@@ -73,9 +73,11 @@ Endpoint examples (used verbatim):
    launched; the tray spawned its own sidecar, `/health` answered and a `tools/call` through it
    returned a verdict, and the tray icon is visible in the menu bar. Evidence: `Jev MCP.app`
    (144 MiB) in `target/release/bundle/macos`.
-8. Icon — **done**: `npm run icons` drew it with an image model
-   (`openai/gpt-image-2` through Vercel AI Gateway, no OpenAI key required) and generated the
-   Tauri set. The source image and the prompt are committed in `desktop-app/icons-src/`.
+8. Icon — **done**, and now the owner's art: `npm run icons` prepares the app icon from
+   `desktop-app/icons-src/icon-source.png` (his delivery) and renders the menu-bar glyph from
+   `desktop-app/icons-src/tray.svg`; `npm run icons:draw` is the image-model path that draws a new
+   art (`openai/gpt-image-2` through Vercel AI Gateway, no OpenAI key required). Sources and the
+   rules behind each are in `desktop-app/icons-src/README.md`.
 9. Harness wiring — **done**: omp (`~/.omp/agent/mcp.json`), Claude Code
    (`claude mcp add --scope user --transport http jev http://127.0.0.1:18791/mcp`) and opencode
    (`~/.config/opencode/opencode.json`) all point at the local endpoint. Claude Code now reports
@@ -137,6 +139,19 @@ Endpoint examples (used verbatim):
   `POST https://ai-gateway.vercel.sh/v1/evaluate` with `model: typesafe-ai/jev` and the gateway
   token from `omp token vercel-ai-gateway` answered HTTP 200, `{"answers":{"fixed":{"type":"boolean","probability":0.85}}}`.
   That is also the endpoint this server is pointed at for the end-to-end check.
+- 2026-09-29: the app icon is the owner's own art. He delivered a decision diamond branching
+  into a green check and a red cross (neon on black, 1536×1024, transparent background) and asked
+  for a single-colour version where the design needs one. The app therefore carries two icons
+  now: the colour app icon — the art centred on its own black background inside the macOS
+  squircle (`tools/build-icons.mjs` → `icons-src/icon.png` → `tauri icon`; `sharp` is a root
+  devDependency for the tile) — and `icons-src/tray.svg` → `src-tauri/icons/tray-template.png`,
+  the menu-bar glyph, embedded with `include_image!` and drawn from its alpha alone. `tray-icon`
+  renders any tray image at 18 pt tall and takes the width from the aspect ratio, so the glyph is
+  a square 36×36. The glyph is the diamond and nothing else: rendered at 18 pt the arrows and
+  verdict boxes merge into an "M" that no longer reads as a decision.
+- 2026-09-29: the CI icon guard is gone with it. `build.yml` skipped the desktop steps while
+  `icons-src/icon.png` was missing and `release.yml` asserted the file — but the icon set has been
+  committed since task 8, so the skipping branch could not run and the assert could not fire.
 - 2026-09-29: the first run with the icon committed failed the Linux desktop job — the runner
   lacked `glib-2.0.pc` and the rest of the webkit stack. Both workflows now install
   `libwebkit2gtk-4.1-dev`, `libayatana-appindicator3-dev`, `librsvg2-dev` and `patchelf` on

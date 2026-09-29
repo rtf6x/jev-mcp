@@ -1,0 +1,9 @@
+<!-- Menu-bar glyph: the decision diamond, the same mark the app icon is built around.
+     macOS paints a template image from its alpha alone and recolours it for light and dark bars,
+     and `tray-icon` draws whatever it is handed at 18 pt tall — the PNG is rendered at 36×36 for
+     a 1:1 pixel map on a Retina display. The app icon's arrows and verdict boxes are left out on
+     purpose: at 18 pt they merge into a single illegible shape, and the diamond alone still reads
+     as the decision node. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" width="36" height="36">
+  <path d="M18 3 L33 18 L18 33 L3 18 Z" fill="none" stroke="#000000" stroke-width="4.4" stroke-linejoin="round" />
+</svg>

@@ -278,11 +278,14 @@ fn build_tray(app: &AppHandle) -> tauri::Result<TrayIcon> {
 
     TrayIconBuilder::with_id("main-tray")
         .menu(&menu)
-        .icon(app.default_window_icon().unwrap().clone())
+        // The menu bar gets its own monochrome glyph, not the window icon: macOS paints a
+        // template image from its alpha alone, so the colour app icon would land in the bar as a
+        // solid tile. `desktop-app/icons-src/tray.svg` is the drawing, `npm run icons` renders it.
+        .icon(tauri::include_image!("./icons/tray-template.png"))
         .tooltip("Jev MCP")
-        // The menu bar draws a template icon in the adaptive monochrome style and inverts it
-        // with the system appearance. Without this the drawn icon was a dark glyph on a dark
-        // bar — present, but invisible. A no-op off macOS.
+        // A template image is recoloured for the light and dark bar and for the highlighted
+        // state; without this the glyph is drawn in its own black and disappears on a dark bar.
+        // A no-op off macOS.
         .icon_as_template(true)
         .on_menu_event(|app, event| match event.id.as_ref() {
             "toggle" => {
