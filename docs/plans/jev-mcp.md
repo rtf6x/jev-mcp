@@ -249,6 +249,20 @@ Endpoint examples (used verbatim):
   revert, and `inspect.json` blanks secret values so a value reading `REDACTED` is that blanking
   rather than an eight-character credential — are recorded in `rootfox.cc-infra`'s `AGENTS.md`
   (`1fada76`).
+- 2026-09-30: the release is green end to end and the artifact was checked the way a user meets it
+  rather than the way a builder does. `codesign -dv` reports `Developer ID Application: Aleksandr
+  Vopilovskii pr RootFox (Q4KD7AC52U)`; `codesign --verify --deep --strict` passes on the bundle
+  and on the nested `mcp-server`; `spctl -a -vvv -t exec` answers `accepted, source=Notarized
+  Developer ID`; `xcrun stapler validate` passes on the app in `/Applications` and on the copy
+  inside the mounted image; both binaries carry `allow-jit` and
+  `allow-unsigned-executable-memory`; and installed from the image the app serves `/health` with
+  `version 0.1.4`. Two behaviours are worth keeping, both macOS-side and documented in the README:
+  macOS may run a quarantined copy from `/private/var/folders/…/AppTranslocation/…` (harmless to
+  the app, fatal to the login item, which records that temporary path — hence "launch it once from
+  `/Applications` before enabling Launch at startup"), and a first run that carries a *real*
+  quarantine event on a machine whose Gatekeeper assessments are disabled raises the consent
+  dialog, which `syspolicyd` converts into `Terminating process due to Gatekeeper rejection` when
+  nobody answers it. The second one is the only thing left to confirm under the default setting.
 
 ## Loose ends
 

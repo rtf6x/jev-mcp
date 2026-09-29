@@ -121,24 +121,31 @@ from its alpha alone and repainted by the system for a light, dark or highlighte
 ### Install a release
 
 Downloads are signed with the team's **Developer ID Application** certificate and notarized by
-Apple, so the `.dmg` opens with a plain double-click. The release workflow takes the certificate
-and the notarization credentials from the repository secrets — `APPLE_CERTIFICATE`,
-`APPLE_CERTIFICATE_PASSWORD`, `APPLE_TEAM_ID`, `APPLE_ID`, `APPLE_PASSWORD` (an app-specific
-password; or `APPLE_API_KEY`, `APPLE_API_ISSUER`, `APPLE_API_KEY_P8` instead of the last three).
-The certificate itself is the team's, reused from Tail MCP; the material and the recipe live in
-`~/tail-mcp-signing/`.
+Apple, so the `.dmg` opens with a plain double-click and the old «"Jev MCP.app" is damaged and
+cannot be opened» is gone. The release workflow takes the certificate and the notarization
+credentials from the repository secrets — `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`,
+`APPLE_TEAM_ID`, `APPLE_ID`, `APPLE_PASSWORD` (an app-specific password; or `APPLE_API_KEY`,
+`APPLE_API_ISSUER`, `APPLE_API_KEY_P8` instead of the last three). The certificate itself is the
+team's, reused from Tail MCP; the material and the recipe live in `~/tail-mcp-signing/`.
 
-With **no certificate** the build falls back to an ad-hoc signature, and macOS quarantines the
-download and answers «"Jev MCP.app" is damaged and cannot be opened». Clear the flag once per
-machine:
+macOS may still ask you to confirm the **first** launch of a downloaded copy («… is an app
+downloaded from the internet. Are you sure you want to open it?»). That is the standard
+quarantine confirmation, not a signature problem — click **Open** once and later launches are
+silent. While that flag is present macOS may also run the app from a randomized read-only copy
+instead of `/Applications` (`ps xw | grep "Jev MCP"` shows a
+`/private/var/folders/…/AppTranslocation/…` path). The app itself does not care, but **Launch at
+startup** does: the login item would record that temporary path. Launch the app once from
+`/Applications` before enabling it, or clear the flag:
 
 ```bash
 xattr -dr com.apple.quarantine "/Applications/Jev MCP.app"
 ```
 
-A certificate present **without** notarization credentials stops the release on purpose: a
+With **no certificate** the build falls back to an ad-hoc signature — and then macOS answers
+«"Jev MCP.app" is damaged and cannot be opened», with that line as the only way in. A certificate
+present **without** notarization credentials stops the release on purpose: a
 signed-but-unnotarized build still trips Gatekeeper, so shipping it would only move the problem.
-Releases up to `v0.1.1` are ad-hoc and need the line above; `v0.1.2` and later are notarized.
+Releases up to `v0.1.1` are ad-hoc and need the line above; `v0.1.4` is the first notarized one.
 
 ## The tools
 
