@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// Build the icon set Tauri bundles from `desktop-app/icons-src/icon-source.png`, and the
-// menu-bar template glyph from `desktop-app/icons-src/tray.svg`.
+// Build the icon set Tauri bundles from `desktop-app/icons-src/icon-source.svg` (or `.png`), and
+// the menu-bar template glyph from `desktop-app/icons-src/tray.svg`.
 //
 //   npm run icons
 //
-// The app icon is the delivered art placed inside the macOS squircle: the tile is the art's own
+// The app icon is the art placed inside the macOS squircle: the tile is the art's own
 // background, the mark is centred and scaled to the icon grid's inner square, and everything
 // outside the squircle is transparent. `tauri icon` then turns that one 1024 tile into the
 // `.icns` / `.ico` / PNG set in `desktop-app/src-tauri/icons/`.
@@ -13,17 +13,21 @@
 // alpha, so a colour icon cannot serve as the menu-bar glyph, and `tray-icon` draws whatever it
 // is given at 18 pt tall — the PNG is rendered at 36×36 for a 1:1 pixel map on a Retina display.
 import { execFileSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import sharp from "sharp";
 
 const repo = dirname(dirname(fileURLToPath(import.meta.url)));
 const sourceDir = join(repo, "desktop-app", "icons-src");
-const artPath = join(sourceDir, "icon-source.png");
-const tilePath = join(sourceDir, "icon.png");
 const traySvgPath = join(sourceDir, "tray.svg");
+const tilePath = join(sourceDir, "icon.png");
 const trayPngPath = join(repo, "desktop-app", "src-tauri", "icons", "tray-template.png");
+
+/** The art, vector first: an SVG is rasterised wide and scaled down, a raster is used as it is. */
+const ART_SOURCES = ["icon-source.svg", "icon-source.png"];
+/** Rasterisation density for an SVG source: 2× its own pixel size, so the tile is a downscale. */
+const ART_DENSITY = 192;
 
 const TILE = 1024;
 /** The icon grid: the mark occupies the inner square, the rest is the tile's own background. */
@@ -33,6 +37,14 @@ const SQUIRCLE_N = 3.4;
 const SUPERSAMPLE = 4;
 /** Alpha above which a source pixel counts as part of the mark. */
 const MARK_ALPHA = 8;
+
+function resolveArt() {
+  for (const name of ART_SOURCES) {
+    const path = join(sourceDir, name);
+    if (existsSync(path)) return path;
+  }
+  throw new Error(`no art in ${sourceDir}: expected ${ART_SOURCES.join(" or ")}`);
+}
 
 /** Coverage of the macOS squircle inside each pixel, sampled `SUPERSAMPLE²` times per pixel. */
 function squircleCoverage(x, y) {
@@ -48,7 +60,7 @@ function squircleCoverage(x, y) {
 }
 
 /** The mark's box in the art, plus the colour the art sits on (read from its corners). */
-function inspectArt({ data, info }) {
+function inspectArt({ data, info }, artPath) {
   const { width, height, channels } = info;
   let left = width;
   let top = height;
@@ -101,14 +113,16 @@ function inspectArt({ data, info }) {
 }
 
 async function buildAppIcon() {
-  const art = await sharp(artPath).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-  const { box, background } = inspectArt(art);
+  const artPath = resolveArt();
+  const art = await sharp(artPath, { density: ART_DENSITY }).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const { box, background } = inspectArt(art, artPath);
   const scale = (TILE * MARK_RATIO) / Math.max(box.width, box.height);
   const markWidth = Math.round(box.width * scale);
   const markHeight = Math.round(box.height * scale);
 
-  const mark = await sharp(artPath)
-    .ensureAlpha()
+  const mark = await sharp(art.data, {
+    raw: { width: art.info.width, height: art.info.height, channels: 4 },
+  })
     .extract(box)
     .resize(markWidth, markHeight, { fit: "fill", kernel: "lanczos3" })
     .png()

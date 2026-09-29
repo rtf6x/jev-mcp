@@ -141,9 +141,11 @@ Endpoint examples (used verbatim):
   That is also the endpoint this server is pointed at for the end-to-end check.
 - 2026-09-29: the app icon is the owner's own art. He delivered a decision diamond branching
   into a green check and a red cross (neon on black, 1536×1024, transparent background) and asked
-  for a single-colour version where the design needs one. The app therefore carries two icons
-  now: the colour app icon — the art centred on its own black background inside the macOS
-  squircle (`tools/build-icons.mjs` → `icons-src/icon.png` → `tauri icon`; `sharp` is a root
+  for a single-colour version where the design needs one; he then delivered a vector trace of the
+  same mark (VTracer, flat fills, no glow), which the pipeline now takes as the source — the
+  raster glow does not survive 32 pixels, the flat vector does, and the tile is rendered from it
+  at 2× and scaled down. The app therefore carries two icons — the mark centred on the black
+  background inside the macOS squircle (`tools/build-icons.mjs` → `icons-src/icon.png` → `tauri icon`; `sharp` is a root
   devDependency for the tile) — and `icons-src/tray.svg` → `src-tauri/icons/tray-template.png`,
   the menu-bar glyph, embedded with `include_image!` and drawn from its alpha alone. `tray-icon`
   renders any tray image at 18 pt tall and takes the width from the aspect ratio, so the glyph is

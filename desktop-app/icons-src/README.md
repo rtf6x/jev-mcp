@@ -4,7 +4,7 @@ Two icons, drawn differently, because macOS asks for two different things.
 
 | Source | Becomes | Used as |
 | --- | --- | --- |
-| `icon-source.png` | `icon.png` (1024×1024 tile) → the whole set via `tauri icon` | The app icon: Finder, the `.dmg`, the installer |
+| `icon-source.svg` (or `.png`) | `icon.png` (1024×1024 tile) → the whole set via `tauri icon` | The app icon: Finder, the `.dmg`, the installer |
 | `tray.svg` | `../src-tauri/icons/tray-template.png` (36×36) | The menu-bar glyph, embedded with `include_image!` |
 
 Run `npm run icons` after changing either. It prepares the tile, renders the glyph and rebuilds
@@ -12,13 +12,18 @@ Run `npm run icons` after changing either. It prepares the tile, renders the gly
 
 ## The app icon
 
-`icon-source.png` is the art as delivered (1536×1024, RGBA, 2026-09-29): a decision diamond
-branching into a green check and a red cross, neon on black. `npm run icons` turns it into the
-tile macOS expects, so the art itself needs no preparation:
+`icon-source.svg` is the art the owner delivered (2026-09-29): a decision diamond branching into
+a green check and a red cross, flat fills on a transparent background, 1536×1024. He also
+delivered the neon-on-black raster it was traced from; the vector won because the glow does not
+survive 32 pixels and the trace does. The pipeline
+resolves `icon-source.svg` first and falls back to `icon-source.png`, so either form of the art
+works; an SVG is rasterised at 2× its own size (`ART_DENSITY`) and then scaled down, which keeps
+the tile crisp. `npm run icons` turns it into the tile macOS expects, so the art itself needs no
+preparation:
 
 - the mark (everything above alpha 8) is centred and scaled to 78% of the tile;
 - the tile continues the art's own background, read from the four corners — averaging every
-  near-transparent pixel instead picks up the colours hiding under the glow and tints the tile;
+  near-transparent pixel instead picks up the colours hiding under a glow and tints the tile;
 - the macOS squircle is applied as an alpha mask (superellipse, exponent 3.4, 4×4 supersampled),
   and everything outside it is transparent. macOS does not round an app icon for you.
 
