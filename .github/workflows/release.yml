@@ -100,8 +100,115 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
       - run: npm ci
       - run: npm run sidecar --workspace mcp-server -- ${{ matrix.target }}
+      - name: Configure macOS code signing
+        if: matrix.os == 'macos-latest'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          # GitHub defines an environment variable for every secret named above, empty when the
+          # secret is unset — and Tauri treats an empty APPLE_CERTIFICATE as a certificate it must
+          # import. Pass on only what exists. The variables land in GITHUB_ENV because the build
+          # step inherits them from there.
+          if [ -z "${APPLE_CERTIFICATE:-}" ]; then
+            SIGNED=0
+            echo "::warning::APPLE_CERTIFICATE is not set — signing ad-hoc. The app opens, but downloaders need the quarantine step from README.md."
+            echo "SIGNED_WITH_DEVELOPER_ID=0" >> "$GITHUB_ENV"
+            echo "APPLE_SIGNING_IDENTITY=-" >> "$GITHUB_ENV"
+          else
+            SIGNED=1
+            echo "SIGNED_WITH_DEVELOPER_ID=1" >> "$GITHUB_ENV"
+            {
+              echo "APPLE_CERTIFICATE<<JEV_MCP_CERT_EOF"
+              echo "$APPLE_CERTIFICATE"
+              echo "JEV_MCP_CERT_EOF"
+              echo "APPLE_CERTIFICATE_PASSWORD<<JEV_MCP_PW_EOF"
+              echo "$APPLE_CERTIFICATE_PASSWORD"
+              echo "JEV_MCP_PW_EOF"
+            } >> "$GITHUB_ENV"
+            # Tauri signs with an explicit identity only when APPLE_SIGNING_IDENTITY is set, so pin
+            # it to the name inside the certificate instead of relying on detection.
+            SIGNING_IDENTITY=$(printf '%s' "$APPLE_CERTIFICATE" | openssl base64 -d -A \
+              | openssl pkcs12 -nokeys -clcerts -passin "pass:${APPLE_CERTIFICATE_PASSWORD}" 2>/dev/null \
+              | openssl x509 -noout -subject 2>/dev/null | sed -n 's/.*CN *= *//p' | sed 's|/.*||' | sed 's/,.*//')
+            if [ -z "$SIGNING_IDENTITY" ]; then
+              echo "could not read a signing identity out of APPLE_CERTIFICATE" >&2
+              exit 1
+            fi
+            echo "APPLE_SIGNING_IDENTITY=$SIGNING_IDENTITY" >> "$GITHUB_ENV"
+            echo "signing identity: $SIGNING_IDENTITY"
+          fi
+          if [ -n "${APPLE_API_KEY_P8:-}" ]; then
+            mkdir -p private_keys
+            printf '%s' "$APPLE_API_KEY_P8" > "private_keys/AuthKey_${APPLE_API_KEY}.p8"
+            {
+              echo "APPLE_API_KEY=${APPLE_API_KEY}"
+              echo "APPLE_API_ISSUER=${APPLE_API_ISSUER}"
+              echo "APPLE_API_KEY_PATH=${GITHUB_WORKSPACE}/private_keys/AuthKey_${APPLE_API_KEY}.p8"
+            } >> "$GITHUB_ENV"
+            NOTARIZED=1
+            echo "notarizing with App Store Connect key ${APPLE_API_KEY}"
+          elif [ -n "${APPLE_ID:-}" ] && [ -n "${APPLE_PASSWORD:-}" ]; then
+            if [ -z "${APPLE_TEAM_ID:-}" ]; then
+              echo "APPLE_ID and APPLE_PASSWORD are set but APPLE_TEAM_ID is not — Tauri aborts notarization without it." >&2
+              exit 1
+            fi
+            {
+              echo "APPLE_ID=${APPLE_ID}"
+              echo "APPLE_PASSWORD<<JEV_MCP_APPLE_PW_EOF"
+              echo "$APPLE_PASSWORD"
+              echo "JEV_MCP_APPLE_PW_EOF"
+              echo "APPLE_TEAM_ID=${APPLE_TEAM_ID}"
+            } >> "$GITHUB_ENV"
+            NOTARIZED=1
+            echo "notarizing as ${APPLE_ID} with an app-specific password"
+          else
+            NOTARIZED=0
+          fi
+          echo "NOTARIZED=$NOTARIZED" >> "$GITHUB_ENV"
+          if [ "$NOTARIZED" = "0" ]; then
+            if [ "$SIGNED" = "1" ]; then
+              echo "APPLE_CERTIFICATE is set but no notarization credentials are: signed-but-not-notarized still trips Gatekeeper, so this half-configured pair fails here instead of shipping. Set APPLE_API_KEY + APPLE_API_ISSUER + APPLE_API_KEY_P8, or APPLE_ID + APPLE_PASSWORD + APPLE_TEAM_ID." >&2
+              exit 1
+            fi
+            echo "::warning::no notarization credentials — Tauri will skip notarization."
+          fi
       - run: npx --yes @tauri-apps/cli build
         working-directory: desktop-app
+      - name: Verify the macOS bundle
+        if: matrix.os == 'macos-latest'
+        run: |
+          set -euo pipefail
+          APP="desktop-app/src-tauri/target/release/bundle/macos/Jev MCP.app"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          codesign -dv --verbose=2 "$APP" 2>&1 | grep -E '^(Authority|TeamIdentifier|Signature)' || true
+          # The sidecar embeds Node: under the hardened runtime it starts, logs nothing and never
+          # binds its port without the JIT entitlement, so assert the entitlement reached it.
+          codesign -d --entitlements :- "$APP/Contents/MacOS/mcp-server" 2>/dev/null | grep -q 'allow-jit' \
+            || { echo "the sidecar has no JIT entitlement — it will hang instead of listening" >&2; exit 1; }
+          if [ "${SIGNED_WITH_DEVELOPER_ID:-0}" = "1" ]; then
+            APP_TEAM=$(codesign -dv --verbose=2 "$APP" 2>&1 | sed -n 's/^TeamIdentifier=//p')
+            SIDECAR_TEAM=$(codesign -dv --verbose=2 "$APP/Contents/MacOS/mcp-server" 2>&1 | sed -n 's/^TeamIdentifier=//p')
+            if [ -z "$APP_TEAM" ] || [ "$APP_TEAM" != "$SIDECAR_TEAM" ]; then
+              echo "app and sidecar carry different teams: '$APP_TEAM' vs '$SIDECAR_TEAM'" >&2
+              exit 1
+            fi
+          fi
+          if [ "${NOTARIZED:-0}" = "1" ]; then
+            # The ticket is what turns «damaged» into a plain double-click: one on the bundle, one
+            # on the disk image the user actually downloads.
+            xcrun stapler validate "$APP"
+            DMG="$(ls -1 desktop-app/src-tauri/target/release/bundle/dmg/*.dmg | head -1)"
+            xcrun stapler validate "$DMG"
+            echo "notarized: $(basename "$DMG")"
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: desktop-${{ matrix.target }}
