@@ -221,6 +221,34 @@ Endpoint examples (used verbatim):
 - 2026-09-29: Rust 1.74 (Homebrew) cannot even parse a dependency manifest that uses edition
   2024; the rustup toolchain on this machine is 1.98, so the build runs with
   `PATH="$HOME/.cargo/bin:$PATH"` and needs no change to the machine.
+- 2026-09-29: `release.yml` is no longer undischarged, and its first runs paid for the two things a
+  workflow nobody has run hides. GitHub now deprecates the action versions it used
+  (`actions/checkout@v4`, `setup-node@v4`, `upload-artifact@v4`, `download-artifact@v4`,
+  `gh-release@v2`), so every job printed a Node-24 warning; they are the current majors now, and
+  `build.yml` run 36638974540 is green on all four jobs. The secrets were a second surprise: the
+  names existed and the values did not — `APPLE_CERTIFICATE_PASSWORD` was missing next to a
+  present `APPLE_CERTIFICATE`, `APPLE_ID` was empty, `APPLE_PASSWORD` a one-character stub — which
+  Tauri reports as `No Keychain password item found`. With `APPLE_ID` set to the account's email
+  the notarization inside `tauri build` succeeded (the log's own `The validate action worked!`),
+  and the run then failed on the verification step: it asked `xcrun stapler validate` for a ticket
+  on the `.dmg`, where Tauri staples the `.app` and the image carries none of its own. That check
+  was wrong, not the build; it now mounts the image and validates the app copy inside it, which is
+  the one the user opens.
+- 2026-09-30: the release work went back into the skillset, not only into this repository.
+  `skills/macos-app-distribution` is new — quarantine versus ad-hoc signature, the `.p12` that the
+  keychain never lists, the Developer-ID-versus-Apple-Distribution distinction, the CI rules
+  (export only the secrets that exist, pin the identity from the certificate's CN, fail on a
+  certificate without notarization), the `allow-jit` entitlement a Node sidecar needs, and the
+  artifact checks — with the Tauri specifics in `references/tauri.md`. The `.dmg` correction above
+  and the fact that both halves of an Apple ID pair fail alike were folded back into it before
+  shipping (`3d99c05`, `0d92d36`). `ci-cd-and-automation` was patched with the action-version and
+  runner-image rules, and `skills/jev/` gained `reference/harnesses.md` (how the server is wired
+  into a host, what it exposes, and the config traps).
+- 2026-09-30: the state-snapshot traps met while refreshing the infra repository's snapshots —
+  `state/` is pull-only, a pull re-vaults every secret file so its diff is ciphertext churn to
+  revert, and `inspect.json` blanks secret values so a value reading `REDACTED` is that blanking
+  rather than an eight-character credential — are recorded in `rootfox.cc-infra`'s `AGENTS.md`
+  (`1fada76`).
 
 ## Loose ends
 
@@ -243,8 +271,12 @@ Endpoint examples (used verbatim):
   driving menu-bar extras needs accessibility permission. Every item is wired in Rust
   (`status`, `toggle`, `autostart`, `edit-env`, `open-logs`, `quit`) and the app compiles with
   them; a click-through is still owed.
-- `release.yml` has never been dispatched: it is lint-clean and will be exercised at the first
-  release, which is also when the version bump, tag and artifact set get their first real run.
+- The first `release.yml` runs exercised the version bump, the tag and the artifact set, and the
+  bump half works: every dispatch rewrites `main` with `Release <version>` and pushes the tag. A
+  run that fails after the bump leaves a tag with no release behind it, which is what `v0.1.2` and
+  `v0.1.3` are — the bump commits of the two notarization failures. They are inert (the next
+  dispatch bumps to a fresh patch), and removing them is the owner's call:
+  `git push --delete origin v0.1.2 v0.1.3`.
 - Windows and Linux desktop builds are configured but unverified on this machine.
 - Editing `generate_image.enabled` needed an approval that expired, so the harness's own
   image tool stays off; the icon is drawn through the AI Gateway's images endpoint instead.
