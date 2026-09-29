@@ -33,9 +33,9 @@ jobs:
   desktop:
     name: Desktop (${{ matrix.target }})
     # The tray app needs the icon set, which is drawn from desktop-app/icons-src/icon.png with
-    # OpenAI's image model (npm run icons) and committed. Until that image exists, this job is
-    # skipped rather than failing the build.
-    if: ${{ hashFiles('desktop-app/icons-src/icon.png') != '' }}
+    # OpenAI's image model (npm run icons) and committed. Until that image exists, the build
+    # steps skip themselves rather than failing the run; a job-level `if` cannot test for a file
+    # (`hashFiles` is not available there).
     strategy:
       fail-fast: false
       matrix:
@@ -49,14 +49,27 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - name: Icon set present?
+        id: icons
+        run: |
+          if [ -f desktop-app/icons-src/icon.png ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/setup-node@v4
+        if: steps.icons.outputs.ready == 'true'
         with:
           node-version: 24
           cache: npm
       - uses: dtolnay/rust-toolchain@stable
+        if: steps.icons.outputs.ready == 'true'
       - run: npm ci
+        if: steps.icons.outputs.ready == 'true'
       - name: Build the sidecar
+        if: steps.icons.outputs.ready == 'true'
         run: npm run sidecar --workspace mcp-server -- ${{ matrix.target }}
       - name: Build the app
+        if: steps.icons.outputs.ready == 'true'
         run: npx --yes @tauri-apps/cli build
         working-directory: desktop-app
