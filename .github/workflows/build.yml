@@ -69,6 +69,11 @@ jobs:
           cache: npm
       - uses: dtolnay/rust-toolchain@stable
         if: steps.icons.outputs.ready == 'true'
+      - name: Install Linux webkit dependencies
+        if: matrix.os == 'ubuntu-latest' && steps.icons.outputs.ready == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
       - run: npm ci
         if: steps.icons.outputs.ready == 'true'
       - name: Build the sidecar

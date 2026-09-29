@@ -62,10 +62,13 @@ Endpoint examples (used verbatim):
 11. Twelve-tool port — **done**: the community tool set of `jkudish/jev-mcp` (MIT) replaces the
     single generic tool, one file per tool under `src/tools/` with shared helpers under
     `src/jev/`. Attribution and adapted-file list in `THIRD-PARTY-NOTICES.md`.
-6. Live call against a credentialed endpoint — **verified**: `POST https://ai-gateway.vercel.sh/v1/evaluate`
-   with the Vercel AI Gateway token already configured in OMP (`omp token vercel-ai-gateway`) and
-   `model: typesafe-ai/jev` answered HTTP 200 with a typed answer. Wiring the same endpoint into
-   this server and calling a tool through it is the last step of the tool port.
+6. Live call against a credentialed endpoint — **done**: the endpoint is Vercel AI Gateway
+   (`POST https://ai-gateway.vercel.sh/v1/evaluate`, `model: typesafe-ai/jev`,
+   `JEV_QUESTION_TYPE=boolean`) with the token OMP already carries
+   (`omp token vercel-ai-gateway`). A first live call through this server answered
+   (`tests_pass` 0.02 → no, `objective_done` 0.12 → no, risk 2.22 → review), and after the port
+   `jev_classify` (two issues routed, both `auto`), `jev_noul` (0.91 likely / 0.02 unlikely) and
+   `jev_gate` answered through it as well.
 7. Desktop tray app (Tauri v2 + SEA sidecar) — **done**: sidecar built, `.app` bundled and
    launched; the tray spawned its own sidecar, `/health` answered and a `tools/call` through it
    returned a verdict, and the tray icon is visible in the menu bar. Evidence: `Jev MCP.app`
@@ -73,7 +76,12 @@ Endpoint examples (used verbatim):
 8. Icon — **done**: `npm run icons` drew it with an image model
    (`openai/gpt-image-2` through Vercel AI Gateway, no OpenAI key required) and generated the
    Tauri set. The source image and the prompt are committed in `desktop-app/icons-src/`.
-9. Harness wiring (omp/Claude Code over HTTP, Claude Desktop over stdio) — pending.
+9. Harness wiring — **done**: omp (`~/.omp/agent/mcp.json`), Claude Code
+   (`claude mcp add --scope user --transport http jev http://127.0.0.1:18791/mcp`) and opencode
+   (`~/.config/opencode/opencode.json`) all point at the local endpoint. Claude Code now reports
+   `jev: Connected`; the entry it carried before pointed at the community `jevai.org` MCP and
+   failed health checks with `401 Invalid or missing Jev API key`, which is what the owner saw
+   as "Jev does not answer". Claude Desktop takes the stdio command from the README.
 10. CI workflows — **done**: `build.yml` is green on `main` (run 36572572759: typecheck, tests,
     bundle, bundle smoke, and three desktop jobs that skip the build steps while the icon source
     is absent). `release.yml` is written and lint-clean; it runs only when dispatched and is
@@ -128,6 +136,18 @@ Endpoint examples (used verbatim):
   `POST https://ai-gateway.vercel.sh/v1/evaluate` with `model: typesafe-ai/jev` and the gateway
   token from `omp token vercel-ai-gateway` answered HTTP 200, `{"answers":{"fixed":{"type":"boolean","probability":0.85}}}`.
   That is also the endpoint this server is pointed at for the end-to-end check.
+- 2026-09-29: the twelve tools are wired into the owner's harnesses. omp's `mcp.json` gained a
+  `jev` entry, Claude Code was re-pointed from the community endpoint to the local one
+  (`claude mcp list` now shows `jev: Connected`; the old entry answered
+  `401 Invalid or missing Jev API key` — the failure the owner had been seeing), and opencode's
+  config gained the same server. The tray app runs with its own `.env`
+  (gateway URL, `typesafe-ai/jev`, `boolean` spelling, mode 600) and serves the twelve tools on
+  `127.0.0.1:18791`.
+- 2026-09-29: the skill that tells an agent when to call which tool — the community ships one and
+  the owner asked for the same — was taken over into the skillset repository as `skills/jev/`
+  (plus `reference/tools.md`), adapted to this server's local endpoint and its `.env` keys.
+  Committed and pushed there (`4394e04`), relinked by `scripts/update.sh` so every harness sees
+  it through `~/.agents/skills`; the repository is clean.
 - 2026-09-29: Rust 1.74 (Homebrew) cannot even parse a dependency manifest that uses edition
   2024; the rustup toolchain on this machine is 1.98, so the build runs with
   `PATH="$HOME/.cargo/bin:$PATH"` and needs no change to the machine.
