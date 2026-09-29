@@ -202,12 +202,19 @@ jobs:
             fi
           fi
           if [ "${NOTARIZED:-0}" = "1" ]; then
-            # The ticket is what turns «damaged» into a plain double-click: one on the bundle, one
-            # on the disk image the user actually downloads.
+            # The ticket is what turns «damaged» into a plain double-click. The bundle carries it;
+            # the dmg carries none of its own, and does not need one — what the user opens is the
+            # copy of the app inside it, so that copy is what gets validated.
             xcrun stapler validate "$APP"
             DMG="$(ls -1 desktop-app/src-tauri/target/release/bundle/dmg/*.dmg | head -1)"
-            xcrun stapler validate "$DMG"
-            echo "notarized: $(basename "$DMG")"
+            MOUNT="$(mktemp -d)"
+            hdiutil attach "$DMG" -mountpoint "$MOUNT" -nobrowse -quiet
+            INAPP="$(ls -d "$MOUNT"/*.app | head -1)"
+            codesign --verify --deep --strict --verbose=2 "$INAPP"
+            xcrun stapler validate "$INAPP"
+            hdiutil detach "$MOUNT" -quiet
+            rmdir "$MOUNT"
+            echo "notarized and stapled: $(basename "$APP"), $(basename "$INAPP") inside $(basename "$DMG")"
           fi
       - uses: actions/upload-artifact@v7
         with:
