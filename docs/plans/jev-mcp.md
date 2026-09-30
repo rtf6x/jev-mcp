@@ -329,6 +329,9 @@ Endpoint examples (used verbatim):
   server-spawning entry (`… src/index.ts --stdio` with `JEV_MCP_ENV`) to
   `node …/mcpb/dist/server/index.mjs` — the same bridge, no `env` block, the app owning `.env`.
   A Desktop restart is owed before the host sees it; the command line itself is the probe above.
+  The installed app is still `0.1.4`, built before this field existed, so a client reads
+  `instructions` only from the next release or from a checkout — the bridge forwards whatever the
+  running server sends.
 - 2026-09-30 Task 12: the workflow skills carry the attachment from the same day's decision —
   `verification-before-completion`, `code-review`, `code-self-audit` and `commit-gate` name the jev
   tool at the moment the judgment happens, and `rules/rules.md` keeps the precedence order (the
