@@ -332,6 +332,12 @@ Endpoint examples (used verbatim):
   The installed app is still `0.1.4`, built before this field existed, so a client reads
   `instructions` only from the next release or from a checkout — the bridge forwards whatever the
   running server sends.
+- 2026-09-30 Task 12: Desktop restarted and took the bridge — its own log shows the stdio server
+  connected, `initialize` and `tools/list` answered, and the twelve tools listed. Live calls through
+  the running server answer in 0.4–0.5 s with `provider: endpoint`: `jev_noul` returned 0.97/0.03/
+  0.24 and `jev_verify` split one claim verified against one contradicted. The running app is
+  `0.1.4`, so its `initialize` carries no `instructions` yet (the ledger line above) — Desktop's
+  mandate comes from the skill's resident line, and the field appears with the next release.
 - 2026-09-30 Task 12: the workflow skills carry the attachment from the same day's decision —
   `verification-before-completion`, `code-review`, `code-self-audit` and `commit-gate` name the jev
   tool at the moment the judgment happens, and `rules/rules.md` keeps the precedence order (the
