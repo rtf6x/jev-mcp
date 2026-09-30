@@ -374,7 +374,13 @@ Endpoint examples (used verbatim):
   `if: github.event_name == 'workflow_dispatch'` because `release.yml` builds and signs the same
   three targets; `concurrency` with `cancel-in-progress` drops a superseded run on the same ref.
   The generic rule (what a push may trigger, what it may not, and why a duplicated build is the
-  smell) went into the skillset's `ci-cd-and-automation`.
+  smell) went into the skillset's `ci-cd-and-automation`. Evidence, in this order: `8a9ae72`
+  reached `main` and started no `Build` at all, while the push before it, `342fb45`, had one; manual
+  run 36655283319 scheduled all four jobs — `Server` and the three desktop targets, none of them
+  skipped — and was cancelled after seconds to stop the meter; pull-request run 36655318459 (a
+  throwaway branch, closed and deleted) finished green with `Server` completed and
+  `Desktop (${{ matrix.target }})` skipped, which is the whole point: a pull request now costs one
+  Linux runner instead of four runners including a 10x macOS one.
 
 ## Loose ends
 
