@@ -94,8 +94,8 @@ Endpoint examples (used verbatim):
 10. CI workflows — **done**: `build.yml` is green on `main` with the icon in place, so the
     desktop matrix really builds: run 36577912941 passed `Server` (27 s) plus
     `Desktop (aarch64-apple-darwin)` (2 m 44 s), `Desktop (x86_64-unknown-linux-gnu)` (7 m 52 s)
-    and `Desktop (x86_64-pc-windows-msvc)` (13 m 24 s). `release.yml` is written and lint-clean;
-    it runs only when dispatched and is exercised at the first release.
+    and `Desktop (x86_64-pc-windows-msvc)` (13 m 24 s). `release.yml` is written and lint-clean,
+    and it runs only when dispatched (the ledger below carries its runs).
 
 ## Ledger
 
@@ -344,6 +344,17 @@ Endpoint examples (used verbatim):
   `jev-mcp-desktop-0.1.4.mcpb` (Desktop computed the hash, `source: local`, unsigned), emptied the
   `mcpServers` entry, and the log shows the switch — the `[jev]` lines stop, `[Jev MCP]` takes over
   `initialize` and `tools/list` on Desktop's own Node, in `mcp-server-Jev MCP.log`.
+- 2026-09-30 Release: `v0.1.5` published — bump commit `ec374b8` on `main`, tag `v0.1.5`, seven
+  assets (`jev-mcp-desktop-0.1.5.mcpb`, server tarball, macOS dmg, Windows exe/msi, Linux
+  AppImage/deb) from `Server bundle`, `Claude Desktop bundle` and the three desktop targets, all
+  green in 15 min. The workflow publishes as a draft by default; `gh release edit v0.1.5
+  --draft=false --latest` is what makes it the Latest release. On the machine the checkout pack was
+  deleted and the released bundle installed over the extension (`0.1.4` → `0.1.5`, new registry
+  hash), which Desktop took without a restart — `[Jev MCP] Server started and connected
+  successfully` at `01:12:12Z`, and the installed `server/index.mjs` answers `initialize` with
+  `serverInfo.version 0.1.5`, twelve tools, and a live call. Cleanup in the same pass removed the
+  stale local `.mcpb`, `mcpb/dist`, `mcp-server/dist` and `desktop-app/src-tauri/{target,gen,binaries}`
+  (2.1 GB, every one regenerable by the documented commands), leaving `node_modules` in place.
 - 2026-09-30 Task 12: the workflow skills carry the attachment from the same day's decision —
   `verification-before-completion`, `code-review`, `code-self-audit` and `commit-gate` name the jev
   tool at the moment the judgment happens, and `rules/rules.md` keeps the precedence order (the
@@ -351,13 +362,16 @@ Endpoint examples (used verbatim):
 
 ## Loose ends
 
-- The Desktop route on this machine is now the installed extension (`local.mcpb.rtf6x.jev-mcp`,
-  packed from this checkout at 0.1.4), and `claude_desktop_config.json` carries an empty `mcpServers`
-  block. The name comes from the manifest — `display_name` *Jev MCP*, its description and the titled
-  URL field — and Desktop records the bundle itself (`source: local`, unsigned, hash computed on
-  install). The extension runs the bridge it was packed with, so a repository edit reaches Desktop
-  only through `npm run pack:mcpb` plus a reinstall: the price of the named entry, and the same flow
-  Tail MCP's extension uses.
+- The Desktop route on this machine is the released extension (`local.mcpb.rtf6x.jev-mcp`, v0.1.5
+  installed from the `v0.1.5` asset, registry hash `c5458186…`, `source: local`, unsigned), and
+  `claude_desktop_config.json` carries an empty `mcpServers` block. The name comes from the manifest
+  — `display_name` *Jev MCP*, its description and the titled URL field. The extension runs the
+  bridge it was packed with, so a repository edit reaches Desktop only through a release — or
+  `npm run pack:mcpb` plus a reinstall: the price of the named entry, and the same flow Tail MCP's
+  extension uses.
+- The tray app installed on this machine is `0.1.4` while the release is `0.1.5`; the extension does
+  not care (the bridge is version-agnostic against the app's port), but the app update from
+  `Jev.MCP_0.1.5_aarch64.dmg` is owed before the two agree.
 - Claude Code does not pass `InitializeResult.instructions` to the model (open issues
   `#23808`, `#41834`, `#43749`). The skill's description carries the mandate instead; when upstream
   fixes the field, the skill text can drop the duplication it needs today.
