@@ -1,6 +1,6 @@
 {
   "name": "jev-mcp",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": true,
   "description": "MCP server that forwards Jev judgments to the configured Jev endpoint",
   "license": "MIT",
