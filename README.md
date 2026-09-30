@@ -26,7 +26,8 @@ written twice.
 
 **Desktop app — no Node needed.** Take the installer from
 [Releases](https://github.com/rtf6x/jev-mcp/releases) and drag it to Applications. The tray then owns
-the server: Start/Stop, **Edit .env**, Open logs. Signature, notarization and the first-launch
+the server: Start/Stop, **Edit .env**, Open logs. Harnesses attach to it, Claude Desktop through the
+`.mcpb` bridge — see [Harnesses](#harnesses). Signature, notarization and the first-launch
 confirmation are covered under [Desktop app](#desktop-app).
 
 **From source — Node 22.18 or newer.** The server runs the TypeScript sources directly.
@@ -39,8 +40,8 @@ cp .env.example .env      # then set JEV_URL and JEV_API_KEY
 npm start                 # MCP over HTTP on http://127.0.0.1:18791/mcp
 ```
 
-**A host that spawns a process** — Claude Desktop and other stdio-only hosts: run `npm run stdio`,
-wired as in [Harnesses](#harnesses).
+**Without the app**, a host that spawns a process runs the server itself: `npm run stdio`, wired as
+in [Harnesses](#harnesses).
 
 ### 2. Point it at a provider
 
@@ -64,6 +65,12 @@ cp -R skills/jev ~/.claude/skills/            # Claude Code (or .claude/skills i
 cp -R skills/jev ~/.config/opencode/skills/   # opencode
 cp -R skills/jev ~/.agents/skills/            # omp, Codex, generic agents
 ```
+
+The line that does the work is the skill's `description`: it is the only text a host keeps in context
+**before** the skill is opened, so it carries the mandate ("judgment goes through these tools, not
+your own reading") rather than a list of capabilities. The server sends the same mandate as
+`instructions` in the `initialize` result, but Claude Code does not pass that field to the model
+(open issues in `anthropics/claude-code`), so the skill is what a client actually reads.
 
 Claude Desktop loads plugins rather than skill directories, so the skill does not reach it this way;
 there the server is what matters.
@@ -130,6 +137,9 @@ npm run stdio      # MCP over stdio, for hosts that spawn a process
 
 ### Harnesses
 
+**The app is the server.** Every host below points at the same running process, so there is one
+`.env`, one endpoint and one place to read the logs.
+
 omp, Claude Code, opencode and any other Streamable-HTTP client:
 
 ```json
@@ -140,7 +150,24 @@ omp, Claude Code, opencode and any other Streamable-HTTP client:
 }
 ```
 
-Claude Desktop and other stdio-only hosts:
+Claude Desktop speaks only local stdio, so it gets a **bridge**, not a server: the
+`jev-mcp-desktop-<version>.mcpb` bundle from [Releases](https://github.com/rtf6x/jev-mcp/releases)
+installs into Desktop's extensions and forwards every request to the app. From a checkout the same
+bridge is wired by hand (build it with `npm run pack:mcpb` first):
+
+```json
+{
+  "mcpServers": {
+    "jev": { "command": "node", "args": ["/absolute/path/to/jev-mcp/mcpb/dist/server/index.mjs"] }
+  }
+}
+```
+
+Both are the same bridge at the same port (`JEV_MCP_URL`, default `http://127.0.0.1:18791/mcp`).
+Pick one — two of them would surface the twelve tools twice. With the app stopped the bridge says
+so and exits; it never starts a server of its own.
+
+**Without the app**, a host that can spawn a process runs the server itself:
 
 ```json
 {
@@ -154,11 +181,16 @@ Claude Desktop and other stdio-only hosts:
 }
 ```
 
+That path owns its own `.env` (the one `JEV_MCP_ENV` names, or the repository's), lives only as long
+as the host, and exists for a machine where the app is not wanted — everything else is better served
+by the app.
+
 A config that already carries a `jev` entry gets that entry **replaced**, never a second one: a
 JSON object keeps the last duplicate key, so the stale entry wins and the client keeps talking to
-the old endpoint while the file still looks right. The server answers `tools/list` only — no
-prompts and no resources; the skill that tells an agent which tool to call ships here as
-`skills/jev/`, a copy of `ai-skillset/skills/jev`, which stays the source of truth.
+the old endpoint while the file still looks right. The server answers `tools/list` and one
+`instructions` string in the `initialize` result — no prompts and no resources; the skill that tells
+an agent which tool to call ships here as `skills/jev/`, a copy of `ai-skillset/skills/jev`, which
+stays the source of truth.
 
 ## Desktop app
 

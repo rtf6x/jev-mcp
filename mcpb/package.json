@@ -1,0 +1,21 @@
+{
+  "name": "jev-mcp-mcpb",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP bundle (MCPB) that bridges Claude Desktop's stdio transport to the running Jev MCP app",
+  "license": "MIT",
+  "scripts": {
+    "build": "node scripts/build.mjs && tsc --noEmit",
+    "pack": "node scripts/build.mjs && node scripts/pack.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0"
+  },
+  "devDependencies": {
+    "@anthropic-ai/mcpb": "^2.1.2",
+    "@types/node": "^22.10.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.8.2"
+  }
+}

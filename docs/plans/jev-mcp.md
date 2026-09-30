@@ -8,8 +8,8 @@ endpoint is the only provider setting: one URL, one key, one model.
 
 ## Scope
 
-In: mcp-server (the twelve judgment tools, HTTP + stdio transports), desktop tray app (Tauri v2,
-sidecar), OpenAI-generated icon, README, CI.
+In: mcp-server (the twelve judgment tools, HTTP + stdio transports), the `mcpb/` stdio→HTTP bridge
+for Claude Desktop, desktop tray app (Tauri v2, sidecar), OpenAI-generated icon, README, CI.
 
 Out: browser extensions, WebSocket handshake, provider table / auto-detection, skill packs,
 Docker, npm publish.
@@ -62,6 +62,13 @@ Endpoint examples (used verbatim):
 11. Twelve-tool port — **done**: the community tool set of `jkudish/jev-mcp` (MIT) replaces the
     single generic tool, one file per tool under `src/tools/` with shared helpers under
     `src/jev/`. Attribution and adapted-file list in `THIRD-PARTY-NOTICES.md`.
+12. **The agent is told to call the tools** — **done**. The resident line and the server both carry
+    the mandate: the skill's `description` (the only text a host keeps in context before the skill
+    is opened) now says judgment goes through these tools rather than the agent's own reading, and
+    the server sends the same text as `InitializeResult.instructions`. Claude Desktop gets a
+    `mcpb/` bundle — a stdio→HTTP bridge to the running app — so no host ever starts a second
+    server. Files: `skills/jev/SKILL.md` (here and in `ai-skillset`, the source of truth),
+    `skills/jev/reference/harnesses.md`, `mcp-server/src/server.ts`, `mcpb/`, `README.md`.
 6. Live call against a credentialed endpoint — **done**: the endpoint is Vercel AI Gateway
    (`POST https://ai-gateway.vercel.sh/v1/evaluate`, `model: typesafe-ai/jev`,
    `JEV_QUESTION_TYPE=boolean`) with the token OMP already carries
@@ -83,7 +90,7 @@ Endpoint examples (used verbatim):
    (`~/.config/opencode/opencode.json`) all point at the local endpoint. Claude Code now reports
    `jev: Connected`; the entry it carried before pointed at the community `jevai.org` MCP and
    failed health checks with `401 Invalid or missing Jev API key`, which is what the owner saw
-   as "Jev does not answer". Claude Desktop takes the stdio command from the README.
+   as "Jev does not answer". Claude Desktop takes the bridge from task 12.
 10. CI workflows — **done**: `build.yml` is green on `main` with the icon in place, so the
     desktop matrix really builds: run 36577912941 passed `Server` (27 s) plus
     `Desktop (aarch64-apple-darwin)` (2 m 44 s), `Desktop (x86_64-unknown-linux-gnu)` (7 m 52 s)
@@ -291,8 +298,54 @@ Endpoint examples (used verbatim):
   stdio host, then provider, harness, skill, checks) and a troubleshooting list: the `401`
   environment trap, a sidecar that is not running, quarantine.
 
+- 2026-09-30 Task 12: the owner's complaint — "skills exist, the model does not use them" — had a
+  mechanism, not a wording problem. What a host keeps in context before a skill is opened is its
+  `description` alone; the mandate sat in the body, so it could only be read *after* the model had
+  already decided the call was worth opening. The description now carries it ("judgment goes through
+  the Jev tools … not through your own reading"), the situation words stay, and the same text is
+  served as `InitializeResult.instructions` (SDK `ServerOptions.instructions`) — the standard MCP
+  channel, which Claude Code ignores today (`anthropics/claude-code#23808`, `#41834`, `#43749`), so
+  the skill remains the carrier that works. Evidence: `initialize` carries a 726-character
+  `instructions` string over both HTTP (probe on a scratch port, `serverInfo` `jev-mcp`) and stdio
+  from the built `dist/jev-mcp.cjs`; `npm run typecheck` clean; `npm test` 60/60; both skill copies
+  `md5` to `111a653e…`.
+- 2026-09-30 Task 12: the community's integration is a *bundle*, and both of its shapes were
+  considered and rejected against the owner's rule that the server lives in the app. Amp's is a
+  `mcpServers:` block in the skill's frontmatter, which starts a server process — the shape Tail MCP
+  never used either. Anthropic's is a plugin with `.mcp.json` next to `skills/`; the trap measured
+  there (Claude Code reads only the dotted `.mcp.json`, and silently ignores a bare `mcp.json`, so
+  the agent never calls the tool the skill names) is worth knowing, but a plugin is a second install
+  path for a wire-up that is one `claude mcp add` line. What the server does carry is the standard
+  `instructions` field.
+- 2026-09-30 Task 12: Claude Desktop cannot speak HTTP, so it gets a bridge rather than a server:
+  `mcpb/` is the same shape as Tail MCP's bundle — a stdio→HTTP forwarder that connects to the
+  running app on startup and exits with a message when it cannot, passing the upstream
+  `instructions` and tool list through and starting nothing of its own. `npm run pack:mcpb` builds
+  and packs it with the official CLI (manifest schema validated) to `jev-mcp-desktop-0.1.4.mcpb`,
+  and `release.yml` gained an `mcpb` job feeding the published assets while `build.yml` packs it on
+  every push. Evidence: with the app up the bridge answered `initialize` and listed the twelve tools;
+  pointed at a dead port it printed `cannot reach … start the Jev MCP app` on stderr, wrote nothing
+  to stdout and exited 1. The desktop config on this machine was switched from the old
+  server-spawning entry (`… src/index.ts --stdio` with `JEV_MCP_ENV`) to
+  `node …/mcpb/dist/server/index.mjs` — the same bridge, no `env` block, the app owning `.env`.
+  A Desktop restart is owed before the host sees it; the command line itself is the probe above.
+- 2026-09-30 Task 12: the workflow skills carry the attachment from the same day's decision —
+  `verification-before-completion`, `code-review`, `code-self-audit` and `commit-gate` name the jev
+  tool at the moment the judgment happens, and `rules/rules.md` keeps the precedence order (the
+  local server first, `judge`/`judge_batch` only where it cannot run).
+
 ## Loose ends
 
+- The Desktop bridge on this machine is wired through `claude_desktop_config.json` (a command
+  pointing at `mcpb/dist/server/index.mjs`), which is a checkout path. Two loose ends come from
+  that: the released `.mcpb` installs through Claude Desktop's own extension store, whose
+  `extensions-installations.json` carries a `hash` the CLI does not produce, so that route was not
+  exercised here and needs a click plus a Desktop restart to confirm; and shipping the bridge inside
+  the app's resources would make the config point at something that survives a cleaned checkout —
+  that costs a release and was not done.
+- Claude Code does not pass `InitializeResult.instructions` to the model (open issues
+  `#23808`, `#41834`, `#43749`). The skill's description carries the mandate instead; when upstream
+  fixes the field, the skill text can drop the duplication it needs today.
 - The tool set is the community's twelve tools — the owner's decision, being ported from
   `jkudish/jev-mcp` (MIT) with our URL-only transport. Anything the port could not carry over
   faithfully, and every deviation our transport forced, is recorded in the port's report and in

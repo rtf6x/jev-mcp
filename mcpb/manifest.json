@@ -1,0 +1,45 @@
+{
+  "manifest_version": "0.3",
+  "name": "jev-mcp",
+  "display_name": "Jev MCP",
+  "version": "0.0.0",
+  "description": "Typed Jev judgments — verdicts, probabilities, scores — inside Claude Desktop, served by the local Jev MCP app",
+  "long_description": "Connects Claude Desktop to the Jev MCP server running on your machine. The server answers judgment questions with typed answers instead of prose: verify a claim against evidence, screen text that arrived from outside, review a patch, gate a completion, rank or classify by meaning, compare passages, extract and audit fields, give a calibrated probability.\n\n**Requirements**\n\n1. The Jev MCP app, running. It owns the server on `http://127.0.0.1:18791` and the `.env` that names the Jev endpoint, the key and the model.\n\nThis bundle is a stdio-to-HTTP bridge: Claude Desktop starts it locally and every MCP request is forwarded to that app, so no second server process is started and there is nothing else to configure. If the app is not running, the bridge says so and stops — start the app and restart the client.",
+  "author": {
+    "name": "rtf6x",
+    "url": "https://github.com/rtf6x"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rtf6x/jev-mcp.git"
+  },
+  "license": "MIT",
+  "keywords": ["mcp", "jev", "judgment", "verification", "classification", "probability"],
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.mjs",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server/index.mjs"],
+      "env": {
+        "JEV_MCP_URL": "${user_config.server_url}"
+      }
+    }
+  },
+  "tools_generated": true,
+  "compatibility": {
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": {
+      "node": ">=18.0.0"
+    }
+  },
+  "user_config": {
+    "server_url": {
+      "type": "string",
+      "title": "Jev MCP server URL",
+      "description": "Where the Jev MCP app serves MCP. Change this only if you moved the server to another port.",
+      "default": "http://127.0.0.1:18791/mcp",
+      "required": false
+    }
+  }
+}

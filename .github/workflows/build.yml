@@ -22,6 +22,8 @@ jobs:
         run: npm test
       - name: Bundle
         run: npm run build
+      - name: Pack the Claude Desktop bundle
+        run: npm run pack:mcpb
       - name: Smoke the bundle
         run: |
           set -o pipefail

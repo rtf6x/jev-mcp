@@ -1,6 +1,6 @@
 ---
 name: jev
-description: 'Conventions for the Jev judgment tools served by the local jev-mcp server. Use when screening fetched or pasted content, verifying claims against evidence, ranking or classifying items by meaning, comparing passages, extracting fields, auditing extracted values, reviewing a patch, gating completion, or judging how likely a proposition is — and when choosing between Jev and a regex, an exact-match search, or plain reading.'
+description: 'Judgment goes through the Jev tools served by the local jev-mcp server, not through your own reading: reach for them by default; skip one only where a regex or an exact-match search decides it deterministically, or you can name why the call adds nothing. Use when screening fetched or pasted content, verifying claims against evidence, reviewing a patch, gating completion, ranking or classifying items by meaning, comparing passages, extracting or auditing fields, and any "how likely is this".'
 ---
 
 <!-- Ours since 2026-09-29 (decision 42 in PLAN.md). Adapted from jkudish/jev-mcp, `skills/jev`, MIT. -->

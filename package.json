@@ -6,6 +6,7 @@
   "license": "MIT",
   "workspaces": [
     "mcp-server",
+    "mcpb",
     "desktop-app"
   ],
   "engines": {
@@ -17,6 +18,7 @@
     "typecheck": "npm run typecheck --workspace mcp-server",
     "test": "npm test --workspace mcp-server",
     "build": "npm run build --workspace mcp-server",
+    "pack:mcpb": "npm run pack --workspace mcpb",
     "sidecar": "npm run sidecar --workspace mcp-server --",
     "desktop": "npm run build --workspace desktop-app",
     "desktop:dev": "npm run dev --workspace desktop-app",
