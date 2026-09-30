@@ -150,10 +150,13 @@ omp, Claude Code, opencode and any other Streamable-HTTP client:
 }
 ```
 
-Claude Desktop speaks only local stdio, so it gets a **bridge**, not a server: the
-`jev-mcp-desktop-<version>.mcpb` bundle from [Releases](https://github.com/rtf6x/jev-mcp/releases)
-installs into Desktop's extensions and forwards every request to the app. From a checkout the same
-bridge is wired by hand (build it with `npm run pack:mcpb` first):
+Claude Desktop speaks only local stdio, so it gets a **bridge**, not a server. Prefer the
+**extension**: installing `jev-mcp-desktop-<version>.mcpb`
+([Releases](https://github.com/rtf6x/jev-mcp/releases), or the packed file `npm run pack:mcpb`
+leaves in the repository root) lists the server under the manifest's own name — *Jev MCP*, with its
+description and a "Jev MCP server URL" field — and runs the bridge on Desktop's bundled Node. The
+hand-wired entry below is the CLI-managed alternative (`claude mcp add`, a config file you keep in
+git); there the server shows the raw key as its name:
 
 ```json
 {
@@ -164,8 +167,9 @@ bridge is wired by hand (build it with `npm run pack:mcpb` first):
 ```
 
 Both are the same bridge at the same port (`JEV_MCP_URL`, default `http://127.0.0.1:18791/mcp`).
-Pick one — two of them would surface the twelve tools twice. With the app stopped the bridge says
-so and exits; it never starts a server of its own.
+Pick one — two of them surface the twelve tools twice, so installing the extension means emptying
+that entry (`"mcpServers": {}`), not adding beside it. With the app stopped the bridge says so and
+exits; it never starts a server of its own.
 
 **Without the app**, a host that can spawn a process runs the server itself:
 

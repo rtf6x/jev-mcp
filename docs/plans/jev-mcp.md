@@ -338,6 +338,12 @@ Endpoint examples (used verbatim):
   0.24 and `jev_verify` split one claim verified against one contradicted. The running app is
   `0.1.4`, so its `initialize` carries no `instructions` yet (the ledger line above) — Desktop's
   mandate comes from the skill's resident line, and the field appears with the next release.
+- 2026-09-30 Task 12: the owner compared the Desktop entry with Tail MCP's, and the difference is
+  the route, not the name: an extension is listed by its manifest's `display_name`, while a config
+  server is listed by its raw key. Chose the extension; installed
+  `jev-mcp-desktop-0.1.4.mcpb` (Desktop computed the hash, `source: local`, unsigned), emptied the
+  `mcpServers` entry, and the log shows the switch — the `[jev]` lines stop, `[Jev MCP]` takes over
+  `initialize` and `tools/list` on Desktop's own Node, in `mcp-server-Jev MCP.log`.
 - 2026-09-30 Task 12: the workflow skills carry the attachment from the same day's decision —
   `verification-before-completion`, `code-review`, `code-self-audit` and `commit-gate` name the jev
   tool at the moment the judgment happens, and `rules/rules.md` keeps the precedence order (the
@@ -345,13 +351,13 @@ Endpoint examples (used verbatim):
 
 ## Loose ends
 
-- The Desktop bridge on this machine is wired through `claude_desktop_config.json` (a command
-  pointing at `mcpb/dist/server/index.mjs`), which is a checkout path. Two loose ends come from
-  that: the released `.mcpb` installs through Claude Desktop's own extension store, whose
-  `extensions-installations.json` carries a `hash` the CLI does not produce, so that route was not
-  exercised here and needs a click plus a Desktop restart to confirm; and shipping the bridge inside
-  the app's resources would make the config point at something that survives a cleaned checkout —
-  that costs a release and was not done.
+- The Desktop route on this machine is now the installed extension (`local.mcpb.rtf6x.jev-mcp`,
+  packed from this checkout at 0.1.4), and `claude_desktop_config.json` carries an empty `mcpServers`
+  block. The name comes from the manifest — `display_name` *Jev MCP*, its description and the titled
+  URL field — and Desktop records the bundle itself (`source: local`, unsigned, hash computed on
+  install). The extension runs the bridge it was packed with, so a repository edit reaches Desktop
+  only through `npm run pack:mcpb` plus a reinstall: the price of the named entry, and the same flow
+  Tail MCP's extension uses.
 - Claude Code does not pass `InitializeResult.instructions` to the model (open issues
   `#23808`, `#41834`, `#43749`). The skill's description carries the mandate instead; when upstream
   fixes the field, the skill text can drop the duplication it needs today.

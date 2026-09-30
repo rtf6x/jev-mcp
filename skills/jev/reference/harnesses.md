@@ -33,15 +33,24 @@ Two transports, picked by the host:
 ```
 
 Claude Desktop has no URL transport, so it takes the bridge — one process per session that forwards
-to the app and starts nothing of its own. The released `jev-mcp-desktop-<version>.mcpb` installs the
-same bridge into Desktop's extensions; a checkout wires it by hand as above. Either way the server,
-its `.env` and its port stay the app's.
+to the app and starts nothing of its own. On Desktop prefer the extension: installing
+`jev-mcp-desktop-<version>.mcpb` lists the server under the manifest's `display_name` (*Jev MCP*,
+with the description and the "Jev MCP server URL" field), runs the bridge on Desktop's own Node, and
+leaves the owner a UI to update it. Installing it needs a click in Desktop and no signature —
+Desktop records the bundle's hash itself (`source: local`, `signatureInfo.status: unsigned`). The
+`mcpServers` entry above is the CLI-managed alternative; there the server is named by the raw key.
+Either way the server, its `.env` and its port stay the app's.
 
 The raw stdio recipe names its `.env` through `JEV_MCP_ENV`; the app owns its own at
 `~/Library/Application Support/<bundle id>/.env` on macOS, and the repository itself needs no `.env`.
 
 ## Traps
 
+- **The bridge installed twice.** Installing the `.mcpb` beside a hand-wired `mcpServers` entry
+  leaves two servers listing the same twelve tools, and the stale one is the copy the owner has
+  forgotten. Installing the extension means emptying the entry (`"mcpServers": {}`), not adding to
+  it; Desktop logs each server under its own name, so the switch shows as `[jev]` lines stopping
+  and `[Jev MCP]` lines starting.
 - **A second `jev` key in the same JSON.** An object keeps the last duplicate key, so a stale entry
   silently wins while the file still looks right — the client keeps talking to the old endpoint.
   Replace the entry, never add one beside it, and check: `grep -c '"jev"' <config>`.
