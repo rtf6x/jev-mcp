@@ -47,9 +47,10 @@ Endpoint examples (used verbatim):
   reports `usage.inputTokens`; TypeSafe answers 403 without a key (Cloudflare, not the
   documented 401) and reports `usage.input_tokens` with no cost.
 - Desktop app needs Rust >= 1.77 (Tauri v2 MSRV); the machine has 1.74.
-- CI minutes come from the owner's own GitHub quota and this repository is private: a runner minute
-  bills at 1x on Linux, 2x on Windows and 10x on macOS. `build.yml` therefore never runs on a push —
-  a pull request builds the server, and the three-runner desktop matrix only on demand.
+- CI minutes no longer bind this repository: it is public, so Actions minutes are free. The
+  triggers stop at a pull request and a manual dispatch for a different reason - duplication: a
+  push would re-run checks the merge already passed, and the desktop matrix repeats what
+  `release.yml` builds and signs.
 
 ## Tasks
 
@@ -95,9 +96,10 @@ Endpoint examples (used verbatim):
    failed health checks with `401 Invalid or missing Jev API key`, which is what the owner saw
    as "Jev does not answer". Claude Desktop takes the bridge from task 12.
 10. CI workflows — **done**: `build.yml` runs on a pull request and on demand, never on a push to
-    `main`, and its desktop matrix only on demand: three runners against the owner's private-repo
-    minute quota is the most expensive thing the repository can do, and `release.yml` builds and
-    signs the same three targets anyway. `concurrency` cancels a superseded run on the same ref.
+    `main`, and its desktop matrix only on demand: three runners repeating what `release.yml`
+    builds and signs anyway is the most expensive thing the repository can do, and a push would be
+    a second run of checks the merge already passed. `concurrency` cancels a superseded run on the
+    same ref.
     With the icon in place the matrix really builds: run 36577912941 passed `Server` (27 s) plus
     `Desktop (aarch64-apple-darwin)` (2 m 44 s), `Desktop (x86_64-unknown-linux-gnu)` (7 m 52 s)
     and `Desktop (x86_64-pc-windows-msvc)` (13 m 24 s). `release.yml` is written and lint-clean,
@@ -382,6 +384,18 @@ Endpoint examples (used verbatim):
   `Desktop (${{ matrix.target }})` skipped, which is the whole point: a pull request now costs one
   Linux runner instead of four runners including a 10x macOS one.
 
+- 2026-09-30: the repository is **public**, and with it the release the plan called unreachable from
+  outside. The whole history was scanned before the flip (39 commits, 585 objects: `sk-…`,
+  `sk-or-v1-…`, `ghp_…`, `github_pat_…`, `AKIA…`, `-----BEGIN … PRIVATE KEY` - no match; `.env`
+  never committed, only `.env.example`; no personal mail and no home paths in the tree). Evidence
+  after: an anonymous request answers 200 for the repository, the raw README and the release page,
+  and serves all seven assets - the `.dmg`, AppImage, `.deb`, `.exe`, `.msi`, `.mcpb` and the server
+  tarball - against 404 for the repository and 404 for an asset before the flip;
+  `repos/rtf6x/jev-mcp/license` answers MIT; secret scanning and push protection are enabled;
+  description and topics were filled in the same pass. Actions minutes are free on a public
+  repository, so the cost that motivated the trigger change above no longer binds here - the
+  triggers stay, on the duplication argument.
+
 ## Loose ends
 
 - A direct push to `main` is checked by nothing: `build.yml` waits for a pull request or for
@@ -431,10 +445,6 @@ Endpoint examples (used verbatim):
 - Windows and Linux desktop builds are configured but unverified on this machine.
 - Editing `generate_image.enabled` needed an approval that expired, so the harness's own
   image tool stays off; the icon is drawn through the AI Gateway's images endpoint instead.
-- The release lives in a **private** repository, and its assets follow that rule: a download link
-  that works for someone outside the repository (a public repository, a token, or a mirror) is a
-  decision the owner has not taken. Until then "published" means "available to whoever has
-  repository access".
 - The one macOS behaviour left to confirm under a default setting: a first launch that carries a
   real quarantine event on a machine with Gatekeeper assessments *enabled* — this machine has them
   disabled, so the consent dialog observed there is not proof of what an ordinary machine shows.
