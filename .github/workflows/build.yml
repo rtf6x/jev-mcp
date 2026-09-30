@@ -1,10 +1,14 @@
 name: Build
 
 on:
-  push:
-    branches: [main]
   pull_request:
   workflow_dispatch:
+
+# One build per ref: a follow-up push to the same branch cancels the run still going. Minutes are
+# billed on a private repository, so a superseded run is money spent on an answer nobody reads.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   server:
@@ -38,10 +42,12 @@ jobs:
 
   desktop:
     name: Desktop (${{ matrix.target }})
-    # The tray app needs the icon set, which is drawn from desktop-app/icons-src/icon.png with
-    # OpenAI's image model (npm run icons) and committed. Until that image exists, the build
-    # steps skip themselves rather than failing the run; a job-level `if` cannot test for a file
-    # (`hashFiles` is not available there).
+    # The expensive half: three runners, and on a private repository macOS bills at 10x and Windows
+    # at 2x against the minute quota. `release.yml` builds and signs the same three targets while
+    # cutting the release, so on a pull request this would be a second, unpaid-for answer to a
+    # question the release already answers. It runs on demand instead - `gh workflow run build.yml`
+    # - ahead of a release.
+    if: github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: false
       matrix:

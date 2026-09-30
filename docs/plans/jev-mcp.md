@@ -47,6 +47,9 @@ Endpoint examples (used verbatim):
   reports `usage.inputTokens`; TypeSafe answers 403 without a key (Cloudflare, not the
   documented 401) and reports `usage.input_tokens` with no cost.
 - Desktop app needs Rust >= 1.77 (Tauri v2 MSRV); the machine has 1.74.
+- CI minutes come from the owner's own GitHub quota and this repository is private: a runner minute
+  bills at 1x on Linux, 2x on Windows and 10x on macOS. `build.yml` therefore never runs on a push —
+  a pull request builds the server, and the three-runner desktop matrix only on demand.
 
 ## Tasks
 
@@ -91,8 +94,11 @@ Endpoint examples (used verbatim):
    `jev: Connected`; the entry it carried before pointed at the community `jevai.org` MCP and
    failed health checks with `401 Invalid or missing Jev API key`, which is what the owner saw
    as "Jev does not answer". Claude Desktop takes the bridge from task 12.
-10. CI workflows — **done**: `build.yml` is green on `main` with the icon in place, so the
-    desktop matrix really builds: run 36577912941 passed `Server` (27 s) plus
+10. CI workflows — **done**: `build.yml` runs on a pull request and on demand, never on a push to
+    `main`, and its desktop matrix only on demand: three runners against the owner's private-repo
+    minute quota is the most expensive thing the repository can do, and `release.yml` builds and
+    signs the same three targets anyway. `concurrency` cancels a superseded run on the same ref.
+    With the icon in place the matrix really builds: run 36577912941 passed `Server` (27 s) plus
     `Desktop (aarch64-apple-darwin)` (2 m 44 s), `Desktop (x86_64-unknown-linux-gnu)` (7 m 52 s)
     and `Desktop (x86_64-pc-windows-msvc)` (13 m 24 s). `release.yml` is written and lint-clean,
     and it runs only when dispatched (the ledger below carries its runs).
@@ -359,8 +365,22 @@ Endpoint examples (used verbatim):
   `verification-before-completion`, `code-review`, `code-self-audit` and `commit-gate` name the jev
   tool at the moment the judgment happens, and `rules/rules.md` keeps the precedence order (the
   local server first, `judge`/`judge_batch` only where it cannot run).
+- 2026-09-30: CI stopped building on a push to `main`. The repository is private and the multiplier
+  is not one (Linux 1x, Windows 2x, macOS 10x), so one push bought roughly 55 billed minutes —
+  `Server` 0.4 min, Linux 5.5, macOS 2.9 (x10) and Windows 10.1 (x2) — and 32 of the 40 most recent
+  runs were pushes: a documentation commit cost the same four runners as a code change, and a release
+  plus the bundling work of one day were 38 runs against a metered quota. `build.yml` now reacts to
+  `pull_request` and `workflow_dispatch`; the desktop matrix carries
+  `if: github.event_name == 'workflow_dispatch'` because `release.yml` builds and signs the same
+  three targets; `concurrency` with `cancel-in-progress` drops a superseded run on the same ref.
+  The generic rule (what a push may trigger, what it may not, and why a duplicated build is the
+  smell) went into the skillset's `ci-cd-and-automation`.
 
 ## Loose ends
+
+- A direct push to `main` is checked by nothing: `build.yml` waits for a pull request or for
+  `gh workflow run build.yml`. Before a release, dispatch it by hand — the Release run is the second
+  check. Where: `.github/workflows/build.yml`. Check: `gh run list --workflow build.yml`.
 
 - The Desktop route on this machine is the released extension (`local.mcpb.rtf6x.jev-mcp`, v0.1.5
   installed from the `v0.1.5` asset, registry hash `c5458186…`, `source: local`, unsigned), and
