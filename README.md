@@ -124,6 +124,21 @@ Known endpoints:
 | OpenRouter | `https://openrouter.ai/api/alpha/decisions` | `typesafe/jev-1.13` | `noul` |
 | Vercel AI Gateway | `https://ai-gateway.vercel.sh/v1/evaluate` | `typesafe-ai/jev` | `boolean` |
 
+One endpoint serves whichever model `JEV_MODEL` names, so the model is configuration like the URL —
+Jev is the reference model, not the only one. The Vercel AI Gateway alone carries three System One
+evaluation models behind the same `/v1/evaluate` contract — `typesafe-ai/jev`,
+`convaiinnovations/laya` and `liquid/d1` — and a fourth is a new value in `.env`, not a code path:
+
+```dotenv
+# .env — same server, a different decision model
+JEV_URL=https://ai-gateway.vercel.sh/v1/evaluate
+JEV_MODEL=convaiinnovations/laya
+JEV_QUESTION_TYPE=boolean
+```
+
+They are not interchangeable in behaviour: `npm run bench` runs the same labelled Choice questions
+against every model and writes the comparison to `docs/bench/model-comparison.md`.
+
 Key pages: [console.typesafe.ai/keys](https://console.typesafe.ai/keys),
 [openrouter.ai/settings/keys](https://openrouter.ai/settings/keys),
 Vercel AI Gateway API keys.

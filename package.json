@@ -17,6 +17,7 @@
     "stdio": "npm run stdio --workspace mcp-server",
     "typecheck": "npm run typecheck --workspace mcp-server",
     "test": "npm test --workspace mcp-server",
+    "bench": "npm run bench --workspace mcp-server",
     "build": "npm run build --workspace mcp-server",
     "pack:mcpb": "npm run pack --workspace mcpb",
     "sidecar": "npm run sidecar --workspace mcp-server --",

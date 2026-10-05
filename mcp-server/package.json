@@ -16,6 +16,7 @@
     "stdio": "node src/index.ts --stdio",
     "typecheck": "tsc --noEmit",
     "test": "node --test test/*.test.ts",
+    "bench": "node scripts/bench-models.ts",
     "build": "node scripts/build.mjs",
     "sidecar": "node scripts/build-sidecar.mjs"
   },

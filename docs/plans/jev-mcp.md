@@ -396,11 +396,36 @@ Endpoint examples (used verbatim):
   repository, so the cost that motivated the trigger change above no longer binds here - the
   triggers stay, on the duplication argument.
 
+- 2026-10-05 Task 13: the endpoint carries more than one evaluation model, so the server was
+  compared against itself. `mcp-server/scripts/bench-models.ts` (`npm run bench`) sends the same
+  labelled question to every model through `postToEndpoint` — the single boundary `callJev` wraps —
+  and reads every reply with the tools' own validators (`validateChoiceAnswer`, `validateNoulAnswer`);
+  it writes `docs/bench/model-comparison.md`. Realistic decisions only — a closed set of 4 and 6
+  options, and one yes/no task. A large catalogue was deliberately left out: a probe found laya
+  hard-fails those on the gateway (HTTP 200 at 20 and 40 options, **HTTP 422** at 77–100, **HTTP
+  413** at ≥130; jev and d1 answer 151), and a 151-label schema measures an encoder's ceiling, not a
+  decision. Run of 2026-10-05, 300 samples × 3 tasks × 3 models, Vercel AI Gateway: overall jev
+  81.9% / laya 77.1% / liquid d1 84.7%. By task — ag_news (4-way) laya 94.3 > d1 89.0 > jev 86.7;
+  emotion (6-way) d1 68.0 > jev 63.3 > laya 61.7; sst2 (yes/no) d1 97.0 > jev 95.7 > laya 75.3. At
+  n=300 only the sst2 gap (laya −20 pts) and the ag_news lead (laya +7.6) clear the noise; the
+  emotion spread and the overall d1-over-jev margin do not. So "is laya better than jev" has no one
+  answer: it wins a topical 4-way choice, loses a binary sentiment judgement badly, and ties on
+  emotion. Cost ~$0.017 for the whole run (jev $0.0138, d1 $0.0030, laya free through 2026-10-31).
+  **No code**: all three models are wire-compatible — `invalid` ≈ 0 across 2700 calls, the one stray
+  was jev's 1/300 on emotion — so a model is a `JEV_MODEL` value, never a path. `tsc --noEmit`
+  clean; `npm test` 60/60 (the bench is not in that suite: it needs the network and a key).
+
 ## Loose ends
 
 - A direct push to `main` is checked by nothing: `build.yml` waits for a pull request or for
   `gh workflow run build.yml`. Before a release, dispatch it by hand — the Release run is the second
   check. Where: `.github/workflows/build.yml`. Check: `gh run list --workflow build.yml`.
+
+- `npm run bench` is a hand-run snapshot, not CI: it needs the network and a real key, and the
+  models behind the gateway change without notice, so `docs/bench/model-comparison.md` ages. Re-run
+  it by hand after a model swap. Where: `mcp-server/scripts/bench-models.ts`. Check:
+  `npm run bench -- --n=50`. Note laya is free only through 2026-10-31; after that its column costs
+  money like the rest.
 
 - The Desktop route on this machine is the released extension (`local.mcpb.rtf6x.jev-mcp`, v0.1.5
   installed from the `v0.1.5` asset, registry hash `c5458186…`, `source: local`, unsigned), and

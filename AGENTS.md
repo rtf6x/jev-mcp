@@ -18,6 +18,7 @@ adapted files and licence texts in `THIRD-PARTY-NOTICES.md`): `jev_verify`, `jev
 npm install            # installs the mcp-server and desktop-app workspaces
 npm run typecheck      # tsc --noEmit (Node runs the TypeScript sources directly)
 npm test               # node --test, no network, no key needed
+npm run bench          # compares evaluation models on labelled data (network + a real key)
 npm start              # MCP over Streamable HTTP on MCP_HTTP_PORT (default 18791)
 npm run stdio          # MCP over stdio (Claude Desktop and other stdio hosts)
 npm run build          # esbuild bundle to mcp-server/dist/jev-mcp.cjs
