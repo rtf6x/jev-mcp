@@ -433,7 +433,14 @@ Endpoint examples (used verbatim):
   `tsc --noEmit` clean; end to end through the HTTP transport against a stub that 503s twice —
   one `jev_noul` call answered `status: ok` after 3 stub hits; 30 interleaved calls against the
   installed 0.1.4 and the rebuilt server, 30/30 each, because the provider was serving again by
-  then — the retry is insurance whose unit tests, not that A/B, carry the proof.
+  then — the retry is insurance whose unit tests, not that A/B, carry the proof. `build.yml`
+  dispatched green (6m07s) before the release, per the loose end above; `release.yml -f
+  draft=false` published `v0.1.6` (dmg 42,145,855 B, sha256 `6f69ca14…`), the image was installed
+  over `/Applications/Jev MCP.app` (`CFBundleShortVersionString` 0.1.6, `codesign --verify --deep
+  --strict` passes, `spctl` answers `accepted, source=Notarized Developer ID`), and `/health`
+  serves `version 0.1.6` with `model liquid/d1` — the app's own `.env` untouched. One `jev_noul`
+  call through the new server answered `status: ok`, and the installed sidecar carries
+  `JEV_RETRY_ATTEMPTS`, so the running tray is the retrying build.
 
 ## Loose ends
 
