@@ -43,8 +43,10 @@ compile time, so a new `.env` always matches the shipped comments.
   per `JEV_QUESTION_TYPE`, and the answer readers accept every documented spelling.
 - Answers are validated fail-closed: malformed answers become `invalid_response` with action
   `review`. Never fabricate, never silently pass.
-- Upstream errors are surfaced with the upstream status and body — no fallback, no retry that
-  could double-charge.
+- Upstream errors are surfaced with the upstream status and body — no fallback to another model,
+  and a retry only where the provider reports the request was not served (`429/502/503/504`, a
+  refused or reset connection, `JEV_RETRY_ATTEMPTS` total). A deadline is never retried: the
+  answer may exist, unread, and asking again could double-charge.
 - Secrets (`JEV_API_KEY`) never appear in logs, tool output, tests, or the repository.
 
 ## The skill

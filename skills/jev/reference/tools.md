@@ -110,6 +110,7 @@ Patch review plus completion claims checked against evidence, in one call.
 
 - Input: `request`, `diff`, `claims[]` (up to 16, 2,000 chars each), `evidence` (required, at least one non-empty item; up to 16 items, 200,000 chars aggregate), optional `tests`; same thresholds as `jev_review`.
 - Output: the `jev_review` block plus per-claim verdicts (`verified` / `contradicted` / `unsupported`) and an aggregate action `auto` | `review` | `escalate`.
+- Output paths: `action`, `reason_codes`, `review.scores` / `review.safe_to_apply`, and `verification` — `verification.results[]` carries each claim with its `verdict`, `confidence` and `probabilities`, `verification.summary` counts the verdicts. A host that previews the result inline cuts off before `verification`: read the whole result, not the printout, or the claims look missing.
 - Claims are assessed against `evidence` only — a claim about tests needs the test log in evidence. That separation is prompt-level instruction, not hard isolation: all fields share one model state, so put each fact where it belongs. A confident contradicted claim escalates. Request and claims are assertions to check, never proof.
 
 ## Classification hygiene (for jev_classify and any catalog)

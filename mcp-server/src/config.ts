@@ -13,6 +13,10 @@ export type Config = {
   readonly httpHost: string;
   readonly httpPort: number;
   readonly timeoutMs: number;
+  /** Total attempts per tool call, the first one included. */
+  readonly retryAttempts: number;
+  /** First pause between attempts; each retry doubles it. */
+  readonly retryBaseDelayMs: number;
   /** Path of the `.env` file that was read (or would have been). */
   readonly envPath: string;
 };
@@ -27,6 +31,8 @@ const DEFAULTS = {
   httpHost: "127.0.0.1",
   httpPort: 18791,
   timeoutMs: 60_000,
+  retryAttempts: 6,
+  retryBaseDelayMs: 300,
 } as const;
 
 const ENV_FILE_VAR = "JEV_MCP_ENV";
@@ -106,6 +112,22 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, cwd: string = p
     httpHost: read("MCP_HOST") ?? DEFAULTS.httpHost,
     httpPort: readInt(read("MCP_HTTP_PORT"), "MCP_HTTP_PORT", DEFAULTS.httpPort, 1, 65_535, envPath),
     timeoutMs: readInt(read("JEV_TIMEOUT_MS"), "JEV_TIMEOUT_MS", DEFAULTS.timeoutMs, 1, 600_000, envPath),
+    retryAttempts: readInt(
+      read("JEV_RETRY_ATTEMPTS"),
+      "JEV_RETRY_ATTEMPTS",
+      DEFAULTS.retryAttempts,
+      1,
+      10,
+      envPath,
+    ),
+    retryBaseDelayMs: readInt(
+      read("JEV_RETRY_BASE_MS"),
+      "JEV_RETRY_BASE_MS",
+      DEFAULTS.retryBaseDelayMs,
+      0,
+      60_000,
+      envPath,
+    ),
     envPath,
   };
 }

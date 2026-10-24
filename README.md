@@ -109,7 +109,9 @@ back with a verdict, probabilities and a usage block is the whole chain working.
 | `JEV_QUESTION_TYPE` | `noul` | Spelling of a yes/no question: `noul` or `boolean`. |
 | `MCP_HOST` | `127.0.0.1` | Interface the HTTP transport binds. |
 | `MCP_HTTP_PORT` | `18791` | Port for the HTTP transport. |
-| `JEV_TIMEOUT_MS` | `60000` | Whole-request deadline for the upstream call. |
+| `JEV_TIMEOUT_MS` | `60000` | Whole-request deadline for one upstream attempt. |
+| `JEV_RETRY_ATTEMPTS` | `6` | Attempts per tool call, the first included. Only for a request the provider reported as not served. |
+| `JEV_RETRY_BASE_MS` | `300` | First pause between attempts; each retry doubles it, with ±20% jitter. |
 | `JEV_MCP_ENV` | `<cwd>/.env` | Path of the env file to read. |
 | `JEV_MCP_EXIT_WITH_PARENT` | `0` | `1` makes the server exit when its stdin closes: the tray app pipes stdin, so the server leaves when the app does instead of holding the port as an orphan. Leave it off for a host that runs without a parent pipe. |
 
@@ -125,9 +127,10 @@ Known endpoints:
 | Vercel AI Gateway | `https://ai-gateway.vercel.sh/v1/evaluate` | `typesafe-ai/jev` | `boolean` |
 
 One endpoint serves whichever model `JEV_MODEL` names, so the model is configuration like the URL —
-Jev is the reference model, not the only one. The Vercel AI Gateway alone carries three System One
+Jev is the reference model, not the only one. The Vercel AI Gateway alone carries four System One
 evaluation models behind the same `/v1/evaluate` contract — `typesafe-ai/jev`,
-`convaiinnovations/laya` and `liquid/d1` — and a fourth is a new value in `.env`, not a code path:
+`convaiinnovations/laya`, `liquid/d1` and `liquid/d1-ultra` (the last is outside the bench) — and
+a fifth is a new value in `.env`, not a code path:
 
 ```dotenv
 # .env — same server, a different decision model
@@ -330,8 +333,11 @@ guessed value: a distribution that does not cover the criteria or does not sum t
 that is not the highest-probability option, a score outside the rubric, a confidence that is
 present but malformed, a regex that timed out, a candidate universe that was capped, or an answer
 that is simply absent. An endpoint failure — transport, or an HTTP error status — is a tool error
-carrying the upstream status and body. There is no fallback and no retry: a paid call is never
-silently repeated.
+carrying the upstream status and body. There is no fallback to another model, and no retry beyond
+the attempts `JEV_RETRY_ATTEMPTS` allows: a retry happens only where the provider reports the
+request was **not served** — `429`, `502`, `503`, `504`, or a refused, reset or unreachable
+connection — so a paid call is never repeated after it may have run. A deadline is not retried:
+the answer may exist, unread, and asking again could pay twice.
 
 Tune the thresholds against your own data —
 [confidence is not correctness](https://docs.typesafe.ai/confidence).

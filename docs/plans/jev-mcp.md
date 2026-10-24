@@ -35,8 +35,10 @@ Endpoint examples (used verbatim):
   fixes for the configured endpoint.
 - Answers are validated fail-closed: a malformed answer is `invalid_response` with action
   `review`, never a fabricated value and never a silent pass.
-- Upstream failures surface as tool errors carrying the upstream status and body. No fallback,
-  no retry that can double-charge a paid call.
+- Upstream failures surface as tool errors carrying the upstream status and body. No fallback to
+  another model; a retry only where the provider reports the request was not served
+  (`429/502/503/504`, a refused or reset connection, up to `JEV_RETRY_ATTEMPTS`), never after a
+  deadline, because the answer may exist unread and a repeat could double-charge.
 - The key never reaches logs, tool output or the repository.
 - The HTTP transport binds `MCP_HOST` (default `127.0.0.1`).
 
@@ -414,6 +416,24 @@ Endpoint examples (used verbatim):
   **No code**: all three models are wire-compatible — `invalid` ≈ 0 across 2700 calls, the one stray
   was jev's 1/300 on emotion — so a model is a `JEV_MODEL` value, never a path. `tsc --noEmit`
   clean; `npm test` 60/60 (the bench is not in that suite: it needs the network and a key).
+
+- 2026-10-24: the Vercel gateway started refusing `liquid/d1` in bursts — from the owner's machine,
+  `503` on 0/10 direct probes at one point, 3 of 5 at another, while `liquid/d1-ultra`,
+  `typesafe-ai/jev` and `convaiinnovations/laya` answered 10/10 with `choice` and `score` question
+  types intact. The server had been single-shot by design, so a burst handed the host a tool error;
+  the owner keeps `liquid/d1` and asked for a stable path through the MCP server, so the request
+  boundary learned to retry without becoming a retry of a paid call: `429/502/503/504` and the
+  socket errors that prove nothing was served (`ECONNREFUSED`, `ECONNRESET`, `EPIPE`,
+  `EHOSTUNREACH`, `ENETUNREACH`, `EAI_AGAIN`, undici's connect/socket codes) are retried; a
+  deadline is not, because the answer may exist unread. `EndpointError` now carries `code` and
+  `timedOut` so the decision is made on the failure kind, never on the message. `JEV_RETRY_ATTEMPTS`
+  (6) and `JEV_RETRY_BASE_MS` (300, doubling with ±20% jitter) are configuration, not a code path.
+  Evidence: `npm test` 64/64 (`callJev retry` covers 503,503,200 → one answer in three requests,
+  422 → exactly one request, spent attempts → the last status, an expired deadline → one request);
+  `tsc --noEmit` clean; end to end through the HTTP transport against a stub that 503s twice —
+  one `jev_noul` call answered `status: ok` after 3 stub hits; 30 interleaved calls against the
+  installed 0.1.4 and the rebuilt server, 30/30 each, because the provider was serving again by
+  then — the retry is insurance whose unit tests, not that A/B, carry the proof.
 
 ## Loose ends
 

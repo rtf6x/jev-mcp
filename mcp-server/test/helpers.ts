@@ -11,6 +11,8 @@ export function testConfig(overrides: Partial<Config> = {}): Config {
     httpHost: "127.0.0.1",
     httpPort: 0,
     timeoutMs: 5_000,
+    retryAttempts: 1,
+    retryBaseDelayMs: 0,
     envPath: "/tmp/jev-mcp-test/.env",
     ...overrides,
   };

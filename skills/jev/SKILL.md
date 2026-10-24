@@ -57,12 +57,14 @@ The numbers travel with the answer: name the tool, the verdict, the probability 
 - Audit before trusting model-written values. When the original text exists, audit against it directly. For images, scans, and recordings: produce a dense transcript and the values with your vision/ASR model, `jev_screen` the transcript (honor `block`/`review` before passing it on), `jev_audit` the values against it, then judge. The audit cross-checks two text artifacts — a shared misreading from one host model can pass, so `pass` is not verification of the pixels or audio. A `wrong` record is a fabrication or omission signal, not a suggestion to re-run the extractor with the same prompt.
 - Review the patch, not the prose. Read the composite and `safe_to_apply`, not the raw rubric scores. `auto` means your thresholds were met, not that the patch is correct.
 - Gate before done — with the right tool. Patch with completion claims and evidence: `jev_gate` once on the final diff. Patch without claims: `jev_review`. Claims and evidence without a patch: `jev_verify`. Run the real checks first; never invent evidence to satisfy a gate. A contradicted claim is a stop, not a footnote.
+- Put a run's output in `evidence`, not only in `tests`. Claim checking reads `evidence` alone — the `tests` field feeds the patch review — so a suite quoted only there comes back `unsupported` while the work is green.
 - Escalate, do not guess. Low confidence on a consequential judgment goes to the human or to a stronger reasoner, with the numbers attached.
 
 ## Fail-closed behavior
 
 - Unknown arguments are rejected, not silently dropped: a typo errors rather than running without the argument. Pass exact parameter names — see [`reference/tools.md`](reference/tools.md).
 - A missing or malformed model answer surfaces as an explicit `invalid_response` — for `jev_screen`, a whole-result error with a `review` recommendation — never as a clean pass, a no-match, or an empty ranking. Treat it as an operational failure: fix the input or the call. Do not assume success and move on.
+- The server retries a request the provider reported as **not served** — `429`, `502`, `503`, `504`, a refused or reset connection — up to `JEV_RETRY_ATTEMPTS` attempts (6 by default) with backoff. A `503` that survives them is an operational failure, not a `review` verdict; a deadline is never retried, because the answer may exist unread and a repeat could pay twice.
 - No `jev_*` tool in the tool list means the local server is not running or not configured, not that the judgment is unnecessary. Start it in the `jev-mcp` checkout (`npm start` for HTTP, `npm run stdio` for a host that spawns it) and call again; never substitute your own reading for a failed call and never invent a verdict.
 
 ## Data handling and cost

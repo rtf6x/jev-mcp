@@ -1,4 +1,5 @@
 import type { Config } from "./config.ts";
+import { isRecord } from "./guards.ts";
 
 export type EndpointResponse = {
   readonly status: number;
@@ -9,10 +10,37 @@ export type EndpointResponse = {
   readonly body: unknown;
 };
 
-/** Transport failure: the endpoint was never reached (or the deadline expired). */
+/**
+ * Transport failure: the endpoint was never reached (or the deadline expired). `code` is the
+ * underlying socket error code when there is one; `timedOut` marks the deadline, where the
+ * request may have been served even though no answer was read.
+ */
 export class EndpointError extends Error {
   override readonly name = "EndpointError";
   readonly status = 0;
+  readonly code: string | null;
+  readonly timedOut: boolean;
+
+  constructor(message: string, options: { code?: string | null; timedOut?: boolean } = {}) {
+    super(message);
+    this.code = options.code ?? null;
+    this.timedOut = options.timedOut ?? false;
+  }
+}
+
+/**
+ * What kind of transport failure this is. A deadline is separated from a refused or reset
+ * connection because only the latter proves the request was never served.
+ */
+function describeFetchFailure(error: unknown): { code: string | null; timedOut: boolean } {
+  if (!(error instanceof Error)) return { code: null, timedOut: false };
+  const cause = (error as { cause?: unknown }).cause;
+  const names = [error.name, cause instanceof Error ? cause.name : null];
+  if (names.includes("TimeoutError") || names.includes("AbortError")) {
+    return { code: null, timedOut: true };
+  }
+  const code = isRecord(cause) && typeof cause["code"] === "string" ? cause["code"] : null;
+  return { code, timedOut: false };
 }
 
 /**
@@ -39,7 +67,7 @@ export async function postToEndpoint(
     });
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
-    throw new EndpointError(`POST ${config.url} failed: ${reason}`);
+    throw new EndpointError(`POST ${config.url} failed: ${reason}`, describeFetchFailure(error));
   }
   const text = await response.text();
   let parsed: unknown = null;
