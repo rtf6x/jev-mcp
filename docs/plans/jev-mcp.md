@@ -441,6 +441,15 @@ Endpoint examples (used verbatim):
   serves `version 0.1.6` with `model liquid/d1` — the app's own `.env` untouched. One `jev_noul`
   call through the new server answered `status: ok`, and the installed sidecar carries
   `JEV_RETRY_ATTEMPTS`, so the running tray is the retrying build.
+- 2026-10-24, later the same day: the owner moved the tray to `liquid/d1-ultra` — a `JEV_MODEL`
+  value, so no code and no release, only the app's own `.env` at
+  `~/Library/Application Support/cc.rootfox.jev-mcp-desktop/.env` followed by a restart. Evidence:
+  `/health` reports `version 0.1.6`, `model liquid/d1-ultra`; `jev_noul` through the MCP answered
+  `model liquid/d1-ultra` with `auto true` on both propositions, and `jev_find` (the `choice`
+  question type that the bench never covered for this model) returned `exists 0.93` with the
+  expected ranking. The choice is per machine and lives outside the repository: a fresh install
+  starts at `jev-latest`, and the value has to be set again after a wipe of the app's support
+  directory.
 
 ## Loose ends
 
